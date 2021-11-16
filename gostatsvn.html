@@ -1,0 +1,49 @@
+<script src="http://s0.qhimg.com/lib/jquery/183.js"></script>
+<script src="http://code.highcharts.com/highcharts.js"></script>
+<script src="http://code.highcharts.com/modules/exporting.js"></script>
+
+
+<div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+<script>
+$(function () {
+    var chart = $('#container').highcharts({
+        title: {
+            text: '代码量统计',
+            x: -20 //center
+        },
+        subtitle: {
+            text: 'Source: haosou.com',
+            x: -20
+        },
+        xAxis: 
+		function(){
+			var xaxis = JSON.parse({{ .xaxis | printf "%s"}});
+			return xaxis;
+		}()
+        ,
+        yAxis: {
+            title: {
+                text: '行'
+            },
+            plotLines: [{
+                value: 0,
+                width: 1,
+                color: '#808080'
+            }]
+        },
+        tooltip: {
+            valueSuffix: ' 行'
+        },
+        legend: {
+            layout: 'vertical',
+            align: 'right',
+            verticalAlign: 'middle',
+            borderWidth: 0
+        },
+		series: function(){
+			var series = JSON.parse({{ .series | printf "%s"}});
+			return series.series;
+		}()
+    });
+});
+</script>
