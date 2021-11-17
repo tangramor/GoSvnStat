@@ -36,12 +36,6 @@ store-plaintext-passwords = no
 ```
 # svn log -r {2021-11-01}:{2021-11-16} -v --xml https://svn.dev.50dg.com/icesvn/ice_server > ice_server_svnlog_202111.xml
 
-./GoSvnStat -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
-
-./GoSvnStat -f svnlog.xml -d workingDirectory -t hightchartsTemplateFilePath
+./GoSvnStat -s 2021-01-01 -e 2021-11-16 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
 ```
 
-* demo
-    * ![demo](http://p9.qhimg.com/d/inn/6379de03/GoStatsvn-stat-result.png "a GoStatsvn result demo")
-* chart
-    * ![chart](http://p0.qhimg.com/d/inn/c776308a/qqqq.png "a GoStatsvn result chart demo")
