@@ -21,8 +21,8 @@ const (
 )
 
 // var svnXmlFile *string = flag.String("f", "", "svn log with xml format")
-var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02")
-var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03")
+var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02, or reversion number")
+var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03, or reversion number, or HEAD")
 var svnDir *string = flag.String("d", "", "code working directory")
 var svnUrl *string = flag.String("url", "", "svn repository URL")
 var logNamePrefix *string = flag.String("n", "", "svn log file name prefix")
@@ -59,7 +59,7 @@ func main() {
 	}
 
 	//生成 svn 日志文件
-	svnXmlFile, err := util.GetSvnLogFile(*svnDir, *startDate, *endDate, *svnUrl, *logNamePrefix, *reGenerate)
+	svnXmlFile, err := util.GetSvnLogFile(*startDate, *endDate, *svnUrl, *logNamePrefix, *reGenerate)
 
 	if err != nil {
 		log.Println(err)

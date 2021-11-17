@@ -127,11 +127,8 @@ func fileExists(path string) bool {
 }
 
 //获取svn日志
-func GetSvnLogFile(workDir string, startDate string, endDate string, svnUrl string, namePrefix string, regenerate string) (svnLogFile string, err error) { /*{{{*/
+func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix string, regenerate string) (svnLogFile string, err error) { /*{{{*/
 	pwd, _ := os.Getwd()
-	if strings.HasPrefix(workDir, "/") {
-		pwd = ""
-	}
 
 	now := time.Now()
 
@@ -149,8 +146,13 @@ func GetSvnLogFile(workDir string, startDate string, endDate string, svnUrl stri
 		namePrefix = "Temp"
 	}
 
+	log_folder := pwd + "/svn_logs/"
+	if !fileExists(log_folder) {
+		os.MkdirAll(log_folder, os.FileMode(0755))
+	}
+
 	log_name := namePrefix + "_svnlog_" + startDate + "_" + endDate + ".log"
-	log_fullpath := pwd + "/" + workDir + "/" + log_name
+	log_fullpath := log_folder + log_name
 
 	//不强制重新生成日志，结束日期不是今天且日志文件存在，则不重新生成
 	if regenerate == "n" && endDate != now.Format("2006-01-02") && fileExists(log_fullpath) {
