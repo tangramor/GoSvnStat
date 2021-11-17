@@ -137,12 +137,12 @@ func GetSvnLogFile(workDir string, startDate string, endDate string, svnUrl stri
 
 	if startDate == "" {
 		startDate = now.AddDate(0, 0, -1).Format("2006-01-02")
-		fmt.Printf("Start Date is %s\n", startDate)
+		log.Printf("Start Date is %s\n", startDate)
 	}
 
 	if endDate == "" {
 		endDate = now.Format("2006-01-02")
-		fmt.Printf("End Date is %s\n", endDate)
+		log.Printf("End Date is %s\n", endDate)
 	}
 
 	if namePrefix == "" {
@@ -154,10 +154,11 @@ func GetSvnLogFile(workDir string, startDate string, endDate string, svnUrl stri
 
 	//不强制重新生成日志，结束日期不是今天且日志文件存在，则不重新生成
 	if regenerate == "n" && endDate != now.Format("2006-01-02") && fileExists(log_fullpath) {
+		log.Printf("Log file %s already exists", log_fullpath)
 		return log_fullpath, nil
 	}
 
-	fmt.Printf("Log filename is %s\n", log_name)
+	log.Printf("Log filename is %s\n", log_name)
 
 	app := "./GenerateSvnLog.sh"
 	param1 := startDate

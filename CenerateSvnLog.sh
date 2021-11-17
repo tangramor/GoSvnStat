@@ -2,7 +2,7 @@
 
 if [ $# -ne 4 ]; then
 
-    echo "Enter startDate, endDate, svnUrl, logName:"
+    echo "Enter startDate (like 2006-01-02), endDate (like 2006-01-03), svnUrl, logName:"
     read startDate endDate svnUrl logName
 
     svn log -r "{"$startDate"}:{"$endDate"}" --xml -v $svnUrl > $logName

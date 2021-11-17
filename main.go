@@ -21,8 +21,8 @@ const (
 )
 
 // var svnXmlFile *string = flag.String("f", "", "svn log with xml format")
-var startDate *string = flag.String("s", "", "svn log start date")
-var endDate *string = flag.String("e", "", "svn log end date")
+var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02")
+var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03")
 var svnDir *string = flag.String("d", "", "code working directory")
 var svnUrl *string = flag.String("url", "", "svn repository URL")
 var logNamePrefix *string = flag.String("n", "", "svn log file name prefix")
@@ -34,32 +34,35 @@ func main() {
 	flag.Parse()
 
 	//判断有没有指定画图的模版文件
-	if *chartTemplate == "" {
-		log.Fatal("-t cannot be empty, -t hightchartsTemplate file path")
-		return
-	}
-
-	//判断有没有指定画图的模版文件
 	if *svnUrl == "" {
 		log.Fatal("-url cannot be empty, -url svn repository URL")
 		return
 	}
 
+	pwd, _ := os.Getwd()
+
+	//判断有没有指定画图的模版文件
+	if *chartTemplate == "" {
+		log.Println("-t is empty, -t hightchartsTemplate file path")
+		*chartTemplate = pwd + "/gostatsvn.html"
+	}
+
 	//判断有没有指定 svnWorkDir
 	if *svnDir == "" {
-		fmt.Printf("-d is empty, -d svnWorkDir")
-		// return
+		log.Println("-d is empty, -d svnWorkDir")
+		*svnDir = pwd
 	}
 
 	//判断有没有指定重新生成日志文件
 	if *reGenerate == "y" {
-		fmt.Printf("-reg is y, will regenerate the log file")
+		log.Println("-reg is y, will re-generate the log file")
 	}
 
+	//生成 svn 日志文件
 	svnXmlFile, err := util.GetSvnLogFile(*svnDir, *startDate, *endDate, *svnUrl, *logNamePrefix, *reGenerate)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		log.Fatal("Failed to generate svn xml log file, exit.")
 		return
 	}
@@ -70,7 +73,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("svn log file is %s \n", svnXmlFile)
+	log.Printf("svn log file is %s \n", svnXmlFile)
 
 	//获取svn root目录
 	svnRoot, err := util.GetSvnRoot(*svnDir)
@@ -97,7 +100,7 @@ func main() {
 
 				//当前在 svn 工作目录，则可以统计 diff 行数
 				if svnRoot != "" {
-					fmt.Printf("svn diff on r%d ,\n", newRev)
+					log.Printf("svn diff on r%d ,\n", newRev)
 
 					stdout, err := util.CallSvnDiff(newRev-1, newRev, svnRoot+path.Path)
 					if err == nil {
@@ -106,7 +109,7 @@ func main() {
 						fmt.Println("err ", err.Error())
 					}
 					appendLines, removeLines, err := util.GetLineDiff(stdout)
-					fmt.Printf("\t%s on r%d +%d -%d,\n", path.Path, newRev, appendLines, removeLines)
+					log.Printf("\t%s on r%d +%d -%d,\n", path.Path, newRev, appendLines, removeLines)
 					if err == nil {
 						if ok {
 							Author.AppendLines += appendLines
