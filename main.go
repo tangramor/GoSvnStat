@@ -20,7 +20,6 @@ const (
 	DATE_SECOND                  = "2006-01-02T15:04:05Z"
 )
 
-// var svnXmlFile *string = flag.String("f", "", "svn log with xml format")
 var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02, or reversion number")
 var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03, or reversion number, or HEAD")
 var svnDir *string = flag.String("d", "", "code working directory")
@@ -33,7 +32,7 @@ var chartData statStruct.ChartData
 func main() {
 	flag.Parse()
 
-	//判断有没有指定画图的模版文件
+	//判断 svn URL 是否指定
 	if *svnUrl == "" {
 		log.Fatal("-url cannot be empty, -url svn repository URL")
 		return
@@ -88,7 +87,23 @@ func main() {
 
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
 		//综合统计
-		Author, ok := AuthorStats[svnXmlLog.Author]
+		Author, ok_as := AuthorStats[svnXmlLog.Author]
+
+		//记录人和日期的详细log，用于细分统计
+		authorTimeStat, ok_tss := authorTimeStats[svnXmlLog.Author]
+		saveTime, err := time.Parse("2006-01-02T15:04:05Z", svnXmlLog.Date)
+		util.CheckErr(err)
+		saveTimeStr := saveTime.Format(DATE_SECOND)
+
+		if !ok_tss { //对象不存在
+			authorTimeStat = make(statStruct.AuthorTimeStat)
+		}
+
+		//取基于时间的用户操作信息
+		AuthorTS, ok_ts := authorTimeStat[saveTimeStr]
+
+		Author.CommitCount += 1
+		AuthorTS.CommitCount += 1
 
 		for _, path := range svnXmlLog.Paths {
 			// Action = M，修改
@@ -97,6 +112,7 @@ func main() {
 
 				//修改计数器
 				Author.ModifiedFiles += 1
+				AuthorTS.ModifiedFiles += 1
 
 				//当前在 svn 工作目录，则可以统计 diff 行数
 				if svnRoot != "" {
@@ -111,7 +127,7 @@ func main() {
 					appendLines, removeLines, err := util.GetLineDiff(stdout)
 					log.Printf("\t%s on r%d +%d -%d,\n", path.Path, newRev, appendLines, removeLines)
 					if err == nil {
-						if ok {
+						if ok_as {
 							Author.AppendLines += appendLines
 							Author.RemoveLines += removeLines
 						} else {
@@ -119,44 +135,36 @@ func main() {
 							Author.RemoveLines = removeLines
 						}
 						AuthorStats[svnXmlLog.Author] = Author
-						//todo 记录人和日期的详细log，用于细分统计
-						authorTimeStat, ok := authorTimeStats[svnXmlLog.Author]
-						saveTime, err := time.Parse("2006-01-02T15:04:05Z", svnXmlLog.Date)
-						util.CheckErr(err)
-						saveTimeStr := saveTime.Format(DATE_SECOND)
-						if ok {
-							Author, ok := authorTimeStat[saveTimeStr]
-							if ok {
-								Author.AppendLines += appendLines
-								Author.RemoveLines += removeLines
-							} else {
-								Author.AppendLines = appendLines
-								Author.RemoveLines = removeLines
-							}
-							authorTimeStat[saveTimeStr] = Author
+
+						if ok_ts {
+							AuthorTS.AppendLines += appendLines
+							AuthorTS.RemoveLines += removeLines
 						} else {
-							Author.AppendLines = appendLines
-							Author.RemoveLines = removeLines
-							authorTimeStat = make(statStruct.AuthorTimeStat)
-							authorTimeStat[saveTimeStr] = Author
+							AuthorTS.AppendLines = appendLines
+							AuthorTS.RemoveLines = removeLines
 						}
-						authorTimeStats[svnXmlLog.Author] = authorTimeStat
-						//fmt.Println(appendLines, removeLines, AuthorStats)
+						authorTimeStat[saveTimeStr] = AuthorTS
 					}
 				}
 			} else if path.Action == "A" && path.Kind == "file" { // Action = A，添加
 				//修改计数器
 				Author.AddedFiles += 1
+				AuthorTS.AddedFiles += 1
 
 				AuthorStats[svnXmlLog.Author] = Author
+				authorTimeStat[saveTimeStr] = AuthorTS
 
 			} else if path.Action == "D" && path.Kind == "file" { // Action = D，删除
 				//修改计数器
 				Author.DeletedFiles += 1
+				AuthorTS.DeletedFiles += 1
 
 				AuthorStats[svnXmlLog.Author] = Author
+				authorTimeStat[saveTimeStr] = AuthorTS
 			}
 		}
+
+		authorTimeStats[svnXmlLog.Author] = authorTimeStat
 	}
 	//输出结果
 	ConsoleOutPutTable(AuthorStats)
@@ -181,9 +189,9 @@ func main() {
 
 //console输出结果
 func ConsoleOutPutTable(AuthorStats map[string]statStruct.AuthorStat) { /*{{{*/
-	fmt.Printf(" ==User== \t==Lines== ==Added== ==Modified== ==Deleted==\n")
+	fmt.Printf(" ==User== \t==commits== ==Lines== ==Added== ==Modified== ==Deleted==\n")
 	for author, val := range AuthorStats {
-		fmt.Printf("%10s\t%5d\t%7d\t%10d\t%7d\n", author, val.AppendLines+val.RemoveLines, val.AddedFiles, val.ModifiedFiles, val.DeletedFiles)
+		fmt.Printf("%10s\t%5d\t%5d\t%7d\t%10d\t%7d\n", author, val.CommitCount, val.AppendLines+val.RemoveLines, val.AddedFiles, val.ModifiedFiles, val.DeletedFiles)
 	}
 } /*}}}*/
 
@@ -193,8 +201,7 @@ func StatLogByDay(authorTimeStats statStruct.AuthorTimeStats) (dayAuthorStats st
 	for author, detail := range authorTimeStats {
 		dayAuthorStat := make(map[string]statStruct.AuthorStat)
 		_, ok := dayAuthorStats[author]
-		if ok {
-		} else {
+		if !ok { //初始化
 			dayAuthorStats[author] = dayAuthorStat
 		}
 		for timeString, stats := range detail {
@@ -207,11 +214,19 @@ func StatLogByDay(authorTimeStats statStruct.AuthorTimeStats) (dayAuthorStats st
 				oldDayAuthorStat, ok := dayAuthorStat[timeFormat]
 				var authorStat statStruct.AuthorStat
 				if ok {
+					authorStat.CommitCount = oldDayAuthorStat.CommitCount + stats.CommitCount
 					authorStat.AppendLines = oldDayAuthorStat.AppendLines + stats.AppendLines
 					authorStat.RemoveLines = oldDayAuthorStat.RemoveLines + stats.RemoveLines
+					authorStat.AddedFiles = oldDayAuthorStat.AddedFiles + stats.AddedFiles
+					authorStat.ModifiedFiles = oldDayAuthorStat.ModifiedFiles + stats.ModifiedFiles
+					authorStat.DeletedFiles = oldDayAuthorStat.DeletedFiles + stats.DeletedFiles
 				} else {
+					authorStat.CommitCount = stats.CommitCount
 					authorStat.AppendLines = stats.AppendLines
 					authorStat.RemoveLines = stats.RemoveLines
+					authorStat.AddedFiles = stats.AddedFiles
+					authorStat.ModifiedFiles = stats.ModifiedFiles
+					authorStat.DeletedFiles = stats.DeletedFiles
 				}
 				dayAuthorStat[timeFormat] = authorStat
 			}
@@ -243,12 +258,16 @@ func StatLogByFullDay(dayAuthorStats statStruct.AuthorTimeStats, minTimestamp in
 		for {
 			authorStat, ok := dayAuthorStat[minDayAuthor]
 			if ok {
-				fmt.Printf("%s\t%d\n", minDayAuthor, authorStat.AppendLines+authorStat.RemoveLines)
+				fmt.Printf("%s\t%d\t%d\t%d\t%d\t%d\n", minDayAuthor, authorStat.CommitCount, authorStat.AppendLines+authorStat.RemoveLines, authorStat.AddedFiles, authorStat.ModifiedFiles, authorStat.DeletedFiles)
 				dayAuthorStatOutput[minDayAuthor] = authorStat
 			} else {
-				fmt.Printf("%s\t%d\n", minDayAuthor, 0)
+				fmt.Printf("%s\t%d\t%d\t%d\t%d\t%d\n", minDayAuthor, 0, 0, 0, 0, 0)
+				authorStat.CommitCount = 0
 				authorStat.AppendLines = 0
 				authorStat.RemoveLines = 0
+				authorStat.AddedFiles = 0
+				authorStat.ModifiedFiles = 0
+				authorStat.DeletedFiles = 0
 				dayAuthorStatOutput[minDayAuthor] = authorStat
 			}
 			minDayTimestampAuthor += 86400
@@ -292,7 +311,7 @@ func getMinMaxTimestamp(authorTimeStats statStruct.AuthorTimeStats) (minTimestam
 //todo 此处有bug,1.没有全部按小时归并，还是按每天每小时归并的。2.显示的小时不是按24小时制
 func ConsoleOutPutHourTable(authorTimeStats statStruct.AuthorTimeStats) { /*{{{*/
 	defaultSmallestTime, _ := time.Parse("2006-01-02T15:04:05Z", DEFAULT_SMALLEST_TIME_STRING)
-	fmt.Printf(" ==user== \t==hour==\t==lines==\n")
+	fmt.Printf(" ==user== \t==hour==\t==commits== ==lines== ==Added== ==Modified== ==Deleted==\n")
 	//先取到时间的区间值
 	for authorName, Author := range authorTimeStats {
 		var minTime time.Time
@@ -312,7 +331,7 @@ func ConsoleOutPutHourTable(authorTimeStats statStruct.AuthorTimeStats) { /*{{{*
 		for sTime, Sval := range Author {
 			fmtTime, err := time.Parse(DATE_HOUR, sTime)
 			util.CheckErr(err)
-			fmt.Printf("%10s\t%5d\t%12d\n", authorName, fmtTime.Hour(), Sval.AppendLines+Sval.RemoveLines)
+			fmt.Printf("%10s\t%5d\t%5d\t%12d\t%10d\t%10d\t%10d\n", authorName, fmtTime.Hour(), Sval.CommitCount, Sval.AppendLines+Sval.RemoveLines, Sval.AddedFiles, Sval.ModifiedFiles, Sval.DeletedFiles)
 		}
 	}
 } /*}}}*/
@@ -334,17 +353,25 @@ func ConsoleOutPutWeekTable(authorTimeStats statStruct.AuthorTimeStats) { /*{{{*
 			oldAuthorStat, ok := weekAuthorStat[week]
 			var authorStat statStruct.AuthorStat
 			if ok {
+				authorStat.CommitCount = oldAuthorStat.CommitCount + sAuthor.CommitCount
 				authorStat.AppendLines = oldAuthorStat.AppendLines + sAuthor.AppendLines
 				authorStat.RemoveLines = oldAuthorStat.RemoveLines + sAuthor.RemoveLines
+				authorStat.AddedFiles = oldAuthorStat.AddedFiles + sAuthor.AddedFiles
+				authorStat.ModifiedFiles = oldAuthorStat.ModifiedFiles + sAuthor.ModifiedFiles
+				authorStat.DeletedFiles = oldAuthorStat.DeletedFiles + sAuthor.DeletedFiles
 			} else {
+				authorStat.CommitCount = sAuthor.CommitCount
 				authorStat.AppendLines = sAuthor.AppendLines
 				authorStat.RemoveLines = sAuthor.RemoveLines
+				authorStat.AddedFiles = sAuthor.AddedFiles
+				authorStat.ModifiedFiles = sAuthor.ModifiedFiles
+				authorStat.DeletedFiles = sAuthor.DeletedFiles
 			}
 			weekAuthorStat[week] = authorStat
 		}
 		weekAuthorStats[authorName] = weekAuthorStat
 	}
-	fmt.Printf(" ==user== \t==week==\t==lines==\n")
+	fmt.Printf(" ==user== \t==week==\t==commits== ==lines== ==Added== ==Modified== ==Deleted==\n")
 	allWeeks := []string{
 		"Sunday ",
 		"Monday",
@@ -359,9 +386,9 @@ func ConsoleOutPutWeekTable(authorTimeStats statStruct.AuthorTimeStats) { /*{{{*
 		for _, oneDay := range allWeeks {
 			authorStat, ok := weekAuthorStat[oneDay]
 			if ok {
-				fmt.Printf("%10s\t%5s\t%12d\n", authorName, oneDay, authorStat.AppendLines+authorStat.RemoveLines)
+				fmt.Printf("%10s\t%5s\t%10d\t%12d\t%10d\t%10d\t%10d\n", authorName, oneDay, authorStat.CommitCount, authorStat.AppendLines+authorStat.RemoveLines, authorStat.AddedFiles, authorStat.ModifiedFiles, authorStat.DeletedFiles)
 			} else {
-				fmt.Printf("%10s\t%5s\t%12d\n", authorName, oneDay, 0)
+				fmt.Printf("%10s\t%5s\t%10d\t%12d\t%10d\t%10d\t%10d\n", authorName, oneDay, 0, 0, 0, 0, 0)
 			}
 		}
 	}

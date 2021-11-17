@@ -1,6 +1,7 @@
 package statStruct
 
 type AuthorStat struct {
+	CommitCount   int
 	AppendLines   int
 	RemoveLines   int
 	ModifiedFiles int
