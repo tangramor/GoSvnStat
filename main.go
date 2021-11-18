@@ -59,8 +59,10 @@ func main() {
 	}
 
 	//判断有没有指定重新生成日志文件
+	reg := false
 	if *reGenerate == "y" {
-		log.Println("-reg is y, will re-generate the log file")
+		log.Println("-reg is y, will re-generate the log and stats file")
+		reg = true
 	}
 
 	var dontignore = true //按优先级忽略
@@ -143,23 +145,35 @@ func main() {
 		//季度统计
 		for q := 1; q < 5; q++ {
 			s, e, _ := util.GetQuarterStartEnd(y, q)
-			util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+			log.Printf("Start to generate %d Q%d svn stats, From %s to %s", y, q, s, e)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+			util.SaveStatsToJson(*logNamePrefix, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
 		}
 
 		//月份统计
 		for m := 1; m < 13; m++ {
 			s, e, _ := util.GetMonthStartEnd(y, m)
-			util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+			log.Printf("Start to generate %d-%d svn stats, From %s to %s", y, m, s, e)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+			util.SaveStatsToJson(*logNamePrefix, s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
 		}
 
 		//星期统计
 		for w := 1; w < 53; w++ {
 			s, e, _ := util.GetWeekStartEnd(y, w)
-			util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+			log.Printf("Start to generate %d week %d svn stats, From %s to %s", y, w, s, e)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+			util.SaveStatsToJson(*logNamePrefix, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 		}
+
+		//年度统计
+		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
+		util.SaveStatsToJson(*logNamePrefix, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
+
+		return
 	}
 
-	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
 
 	//输出结果
 	ConsoleOutPutTable(AuthorStats)

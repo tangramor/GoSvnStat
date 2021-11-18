@@ -46,17 +46,20 @@ type YearStats struct {
 }
 
 type QuarterStats struct {
-	Year  int
-	Stats []AuthorQuarterStat
+	Year    int
+	Quarter int
+	Stats   []AuthorQuarterStat
 }
 
 type MonthStats struct {
 	Year  int
+	Month int
 	Stats []AuthorMonthStat
 }
 
 type WeekStats struct {
 	Year  int
+	Week  int
 	Stats []AuthorWeekStat
 }
 

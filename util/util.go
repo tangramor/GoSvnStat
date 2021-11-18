@@ -4,6 +4,7 @@ package util
 import (
 	"GoSvnStat/statStruct"
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -130,7 +131,7 @@ func fileExists(path string) bool {
 }
 
 //获取svn日志
-func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix string, regenerate string) (svnLogFile string, err error) { /*{{{*/
+func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix string, reGenerate bool) (svnLogFile string, err error) { /*{{{*/
 	pwd, _ := os.Getwd()
 
 	now := time.Now()
@@ -160,7 +161,7 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	log.Printf("Log filename is %s\n", log_name)
 
 	//不强制重新生成日志，结束日期不是今天且日志文件存在，则不重新生成
-	if regenerate == "n" && endDate != now.Format("2006-01-02") && fileExists(log_fullpath) {
+	if !reGenerate && endDate != now.Format("2006-01-02") && fileExists(log_fullpath) {
 		log.Printf("Log file %s already exists", log_fullpath)
 		return log_fullpath, nil
 	}
@@ -227,7 +228,11 @@ func GetWeekStartEnd(year int, week int) (startDate string, endDate string, err 
 
 //获取当年某月的起始日期和结束日期
 func GetMonthStartEnd(year int, month int) (startDate string, endDate string, err error) {
-	firstday, err := time.Parse("2006-01-02", strconv.Itoa(year)+"-"+strconv.Itoa(month)+"-01")
+	m_str := strconv.Itoa(month)
+	if month < 10 {
+		m_str = "0" + m_str
+	}
+	firstday, err := time.Parse("2006-01-02", strconv.Itoa(year)+"-"+m_str+"-01")
 	if err == nil {
 		startDate := firstday.Format("2006-01-02")
 
@@ -276,7 +281,8 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 	return int(e.Sub(s).Hours()/24) + 1
 }
 
-func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+//根据输入参数生成统计数据
+func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
 	//获取天数
 	days := GetDurationDays(startDate, endDate)
 	log.Printf("Total %d days during the stats", days)
@@ -392,9 +398,161 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	}
 
 	for name, author := range AuthorStats {
-		author.AverageCommitsPerDay = int(math.Ceil(float64(author.CommitCount) / float64(days)))
+		author.AverageCommitsPerDay = int(math.Round(float64(author.CommitCount) / float64(days)))
 		AuthorStats[name] = author
 	}
 
 	return authorTimeStats, AuthorStats
+}
+
+//将数据保存到 JSON 文件
+func SaveStatsToJson(namePrefix string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
+	pwd, _ := os.Getwd()
+
+	log_folder := pwd + "/svn_stats/"
+	if !fileExists(log_folder) {
+		os.MkdirAll(log_folder, os.FileMode(0755))
+	}
+
+	log_fullpath := log_folder + namePrefix + "_svnstats_"
+
+	switch typeName {
+	case YEAR_STATS:
+		SaveYearStatsToJsonFile(year, authorStats, log_fullpath+"year_"+strconv.Itoa(year)+".json", reGenerate)
+	case QUARTER_STATS:
+		SaveQuarterStatsToJsonFile(year, typeValue, authorStats, log_fullpath+"quarter_"+strconv.Itoa(year)+"Q"+strconv.Itoa(typeValue)+".json", reGenerate)
+	case MONTH_STATS:
+		SaveMonthStatsToJsonFile(year, typeValue, authorStats, log_fullpath+"month_"+strconv.Itoa(year)+"M"+strconv.Itoa(typeValue)+".json", reGenerate)
+	case WEEK_STATS:
+		SaveWeekStatsToJsonFile(year, typeValue, authorStats, log_fullpath+"week_"+strconv.Itoa(year)+"W"+strconv.Itoa(typeValue)+".json", reGenerate)
+	default:
+
+	}
+
+}
+
+func SaveYearStatsToJsonFile(year int, authorStats map[string]statStruct.AuthorStat, filepath string, reGenerate bool) {
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(filepath) {
+		log.Printf("Stats file %s already exists", filepath)
+		return
+	}
+
+	log.Printf("Stats filename is %s\n", filepath)
+
+	yearStats := statStruct.YearStats{}
+	authorYearStats := []statStruct.AuthorYearStat{}
+
+	yearStats.Year = year
+
+	for author, authorstat := range authorStats {
+		authorYearStat := statStruct.AuthorYearStat{
+			Author: author,
+			Year:   year,
+			Stat:   authorstat,
+		}
+		authorYearStats = append(authorYearStats, authorYearStat)
+	}
+
+	yearStats.Stats = authorYearStats
+
+	file, _ := json.MarshalIndent(yearStats, "", " ")
+
+	_ = ioutil.WriteFile(filepath, file, 0644)
+}
+
+func SaveQuarterStatsToJsonFile(year int, quarter int, authorStats map[string]statStruct.AuthorStat, filepath string, reGenerate bool) {
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(filepath) {
+		log.Printf("Stats file %s already exists", filepath)
+		return
+	}
+
+	log.Printf("Stats filename is %s\n", filepath)
+
+	quarterStats := statStruct.QuarterStats{}
+	authorQuarterStats := []statStruct.AuthorQuarterStat{}
+
+	quarterStats.Year = year
+	quarterStats.Quarter = quarter
+
+	for author, authorstat := range authorStats {
+		authorQuarterStat := statStruct.AuthorQuarterStat{
+			Author:  author,
+			Year:    year,
+			Quarter: quarter,
+			Stat:    authorstat,
+		}
+		authorQuarterStats = append(authorQuarterStats, authorQuarterStat)
+	}
+
+	quarterStats.Stats = authorQuarterStats
+
+	file, _ := json.MarshalIndent(quarterStats, "", " ")
+
+	_ = ioutil.WriteFile(filepath, file, 0644)
+}
+
+func SaveMonthStatsToJsonFile(year int, month int, authorStats map[string]statStruct.AuthorStat, filepath string, reGenerate bool) {
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(filepath) {
+		log.Printf("Stats file %s already exists", filepath)
+		return
+	}
+
+	log.Printf("Stats filename is %s\n", filepath)
+
+	monthStats := statStruct.MonthStats{}
+	authorMonthStats := []statStruct.AuthorMonthStat{}
+
+	monthStats.Year = year
+	monthStats.Month = month
+
+	for author, authorstat := range authorStats {
+		authorMonthStat := statStruct.AuthorMonthStat{
+			Author: author,
+			Year:   year,
+			Month:  month,
+			Stat:   authorstat,
+		}
+		authorMonthStats = append(authorMonthStats, authorMonthStat)
+	}
+
+	monthStats.Stats = authorMonthStats
+
+	file, _ := json.MarshalIndent(monthStats, "", " ")
+
+	_ = ioutil.WriteFile(filepath, file, 0644)
+}
+
+func SaveWeekStatsToJsonFile(year int, week int, authorStats map[string]statStruct.AuthorStat, filepath string, reGenerate bool) {
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(filepath) {
+		log.Printf("Stats file %s already exists", filepath)
+		return
+	}
+
+	log.Printf("Stats filename is %s\n", filepath)
+
+	weekStats := statStruct.WeekStats{}
+	authorWeekStats := []statStruct.AuthorWeekStat{}
+
+	weekStats.Year = year
+	weekStats.Week = week
+
+	for author, authorstat := range authorStats {
+		authorWeekStat := statStruct.AuthorWeekStat{
+			Author: author,
+			Year:   year,
+			Week:   week,
+			Stat:   authorstat,
+		}
+		authorWeekStats = append(authorWeekStats, authorWeekStat)
+	}
+
+	weekStats.Stats = authorWeekStats
+
+	file, _ := json.MarshalIndent(weekStats, "", " ")
+
+	_ = ioutil.WriteFile(filepath, file, 0644)
 }
