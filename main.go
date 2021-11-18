@@ -136,30 +136,30 @@ func main() {
 	if *year != "" && dontignore {
 		*startDate = *year + "-01-01"
 		*endDate = *year + "-12-31"
+
+		y, _ := strconv.Atoi(*year)
+
+		//如果按年统计，则一并把当年的按季度、按月份、按星期的统计生成出来
+		//季度统计
+		for q := 1; q < 5; q++ {
+			s, e, _ := util.GetQuarterStartEnd(y, q)
+			util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+		}
+
+		//月份统计
+		for m := 1; m < 13; m++ {
+			s, e, _ := util.GetMonthStartEnd(y, m)
+			util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+		}
+
+		//星期统计
+		for w := 1; w < 53; w++ {
+			s, e, _ := util.GetWeekStartEnd(y, w)
+			util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
+		}
 	}
 
-	//获取天数
-	days := util.GetDurationDays(*startDate, *endDate)
-	log.Printf("Total %d days during the stats", days)
-
-	//生成 svn 日志文件
-	svnXmlFile, err := util.GetSvnLogFile(*startDate, *endDate, *svnUrl, *logNamePrefix, *reGenerate)
-
-	if err != nil {
-		log.Println(err)
-		log.Fatal("Failed to generate svn xml log file, exit.")
-		return
-	}
-
-	//判断文件是否存在
-	if _, err := os.Stat(svnXmlFile); os.IsNotExist(err) {
-		log.Fatalf("svn log file '%s' not exists.", svnXmlFile)
-		return
-	}
-
-	log.Printf("svn log file is %s \n", svnXmlFile)
-
-	authorTimeStats, AuthorStats := util.GenerateStat(*svnDir, svnXmlFile, days)
+	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, *reGenerate)
 
 	//输出结果
 	ConsoleOutPutTable(AuthorStats)

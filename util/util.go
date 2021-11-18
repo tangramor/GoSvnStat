@@ -276,7 +276,28 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 	return int(e.Sub(s).Hours()/24) + 1
 }
 
-func GenerateStat(svnDir string, svnXmlFile string, days int) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+	//获取天数
+	days := GetDurationDays(startDate, endDate)
+	log.Printf("Total %d days during the stats", days)
+
+	//生成 svn 日志文件
+	svnXmlFile, err := GetSvnLogFile(startDate, endDate, svnUrl, logNamePrefix, reGenerate)
+
+	if err != nil {
+		log.Println(err)
+		log.Fatal("Failed to generate svn xml log file, exit.")
+		return
+	}
+
+	//判断文件是否存在
+	if _, err := os.Stat(svnXmlFile); os.IsNotExist(err) {
+		log.Fatalf("svn log file '%s' not exists.", svnXmlFile)
+		return
+	}
+
+	log.Printf("svn log file is %s \n", svnXmlFile)
+
 	//获取svn root目录
 	svnRoot, _ := GetSvnRoot(svnDir)
 
