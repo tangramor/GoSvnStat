@@ -13,54 +13,32 @@ type AuthorStat struct {
 type AuthorTimeStat map[string]AuthorStat      //map[time]AuthorStat
 type AuthorTimeStats map[string]AuthorTimeStat //map[user]AuthorTimeStat
 
-type AuthorYearStat struct {
+type AuthorNameStat struct {
 	Author string
-	Year   int
-	Stat   AuthorStat
-}
-
-type AuthorQuarterStat struct {
-	Author  string
-	Year    int
-	Quarter int
-	Stat    AuthorStat
-}
-
-type AuthorMonthStat struct {
-	Author string
-	Year   int
-	Month  int
-	Stat   AuthorStat
-}
-
-type AuthorWeekStat struct {
-	Author string
-	Year   int
-	Week   int
 	Stat   AuthorStat
 }
 
 type YearStats struct {
 	Year  int
-	Stats []AuthorYearStat
+	Stats []AuthorNameStat
 }
 
 type QuarterStats struct {
 	Year    int
 	Quarter int
-	Stats   []AuthorQuarterStat
+	Stats   []AuthorNameStat
 }
 
 type MonthStats struct {
 	Year  int
 	Month int
-	Stats []AuthorMonthStat
+	Stats []AuthorNameStat
 }
 
 type WeekStats struct {
 	Year  int
 	Week  int
-	Stats []AuthorWeekStat
+	Stats []AuthorNameStat
 }
 
 type ChartData struct {

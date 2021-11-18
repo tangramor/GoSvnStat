@@ -167,6 +167,7 @@ func main() {
 		}
 
 		//年度统计
+		log.Printf("Start to generate year %d svn stats, From %s to %s", y, *startDate, *endDate)
 		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
 		util.SaveStatsToJson(*logNamePrefix, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
 
