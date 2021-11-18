@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,8 +21,13 @@ const (
 	DATE_SECOND                  = "2006-01-02T15:04:05Z"
 )
 
-var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02, or reversion number")
-var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03, or reversion number, or HEAD")
+var year *string = flag.String("y", "", "svn log for a year, like 2006; priority 5")
+var quarter *string = flag.String("q", "", "svn log for a quarter, like 2006Q1; priority 4")
+var month *string = flag.String("m", "", "svn log for a month, like 2006-01; priority 3")
+var week *string = flag.String("w", "", "svn log for a week like 2006W20; priority 2")
+var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02, or reversion number; priority 1")
+var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03, or reversion number, or HEAD; priority 1")
+
 var svnDir *string = flag.String("d", "", "code working directory")
 var svnUrl *string = flag.String("url", "", "svn repository URL")
 var logNamePrefix *string = flag.String("n", "", "svn log file name prefix")
@@ -57,6 +63,85 @@ func main() {
 		log.Println("-reg is y, will re-generate the log file")
 	}
 
+	var dontignore = true //按优先级忽略
+
+	//按开始、结束日期统计，第一优先，即有这个参数就忽略其它时间参数
+	if *startDate != "" && *endDate != "" {
+		dontignore = false
+	}
+
+	//按某年星期统计，第二优先
+	//星期以周一为起始日
+	if *week != "" && dontignore {
+		dontignore = false
+
+		yw := strings.Split(*week, "W")
+		if yw[1] == "" {
+			log.Fatal("Week format wrong, it should be like 2006W02, exit.")
+			return
+		}
+		y, err_y := strconv.Atoi(yw[0]) //转换年份为整数值
+		w, err_w := strconv.Atoi(yw[1]) //转换周数为整数值
+		if err_w == nil && err_y == nil {
+			s, e, err := util.GetWeekStartEnd(y, w)
+			if err == nil {
+				*startDate = s
+				*endDate = e
+			}
+		}
+	}
+
+	//按某年月度统计，第三优先
+	if *month != "" && dontignore {
+		dontignore = false
+
+		ym := strings.Split(*month, "-")
+		if ym[1] == "" {
+			log.Fatal("Month format wrong, it should be like 2006-02, exit.")
+			return
+		}
+		y, err_y := strconv.Atoi(ym[0]) //转换年份为整数值
+		m, err_m := strconv.Atoi(ym[1]) //转换月份为整数值
+		if err_m == nil && err_y == nil {
+			s, e, err := util.GetMonthStartEnd(y, m)
+			if err == nil {
+				*startDate = s
+				*endDate = e
+			}
+		}
+	}
+
+	//按某年季度统计，第四优先
+	if *quarter != "" {
+		dontignore = false
+
+		yq := strings.Split(*quarter, "Q")
+		if yq[1] == "" {
+			log.Fatal("Quarter format wrong, it should be like 2006Q2, exit.")
+			return
+		}
+		y, err_y := strconv.Atoi(yq[0]) //转换年份为整数值
+		q, err_q := strconv.Atoi(yq[1]) //转换季度为整数值
+
+		if err_q == nil && err_y == nil {
+			s, e, err := util.GetQuarterStartEnd(y, q)
+			if err == nil {
+				*startDate = s
+				*endDate = e
+			}
+		}
+	}
+
+	//按年统计
+	if *year != "" && dontignore {
+		*startDate = *year + "-01-01"
+		*endDate = *year + "-12-31"
+	}
+
+	//获取天数
+	days := util.GetDurationDays(*startDate, *endDate)
+	log.Printf("Total %d days during the stats", days)
+
 	//生成 svn 日志文件
 	svnXmlFile, err := util.GetSvnLogFile(*startDate, *endDate, *svnUrl, *logNamePrefix, *reGenerate)
 
@@ -74,98 +159,8 @@ func main() {
 
 	log.Printf("svn log file is %s \n", svnXmlFile)
 
-	//获取svn root目录
-	svnRoot, err := util.GetSvnRoot(*svnDir)
+	authorTimeStats, AuthorStats := util.GenerateStat(*svnDir, svnXmlFile, days)
 
-	svnXmlLogs, err := util.ParaseSvnXmlLog(svnXmlFile)
-	//	fmt.Printf("%v", svnXmlLogs)
-	util.CheckErr(err)
-
-	authorTimeStats := make(statStruct.AuthorTimeStats)
-
-	AuthorStats := make(map[string]statStruct.AuthorStat)
-
-	for _, svnXmlLog := range svnXmlLogs.Logentry {
-		//综合统计
-		Author, ok_as := AuthorStats[svnXmlLog.Author]
-
-		//记录人和日期的详细log，用于细分统计
-		authorTimeStat, ok_tss := authorTimeStats[svnXmlLog.Author]
-		saveTime, err := time.Parse("2006-01-02T15:04:05Z", svnXmlLog.Date)
-		util.CheckErr(err)
-		saveTimeStr := saveTime.Format(DATE_SECOND)
-
-		if !ok_tss { //对象不存在
-			authorTimeStat = make(statStruct.AuthorTimeStat)
-		}
-
-		//取基于时间的用户操作信息
-		AuthorTS, ok_ts := authorTimeStat[saveTimeStr]
-
-		Author.CommitCount += 1
-		AuthorTS.CommitCount += 1
-
-		for _, path := range svnXmlLog.Paths {
-			// Action = M，修改
-			if path.Action == "M" && path.Kind == "file" {
-				newRev, _ := strconv.Atoi(svnXmlLog.Revision)
-
-				//修改计数器
-				Author.ModifiedFiles += 1
-				AuthorTS.ModifiedFiles += 1
-
-				//当前在 svn 工作目录，则可以统计 diff 行数
-				if svnRoot != "" {
-					log.Printf("svn diff on r%d ,\n", newRev)
-
-					stdout, err := util.CallSvnDiff(newRev-1, newRev, svnRoot+path.Path)
-					if err == nil {
-						//fmt.Println("stdout ",stdout)
-					} else {
-						fmt.Println("err ", err.Error())
-					}
-					appendLines, removeLines, err := util.GetLineDiff(stdout)
-					log.Printf("\t%s on r%d +%d -%d,\n", path.Path, newRev, appendLines, removeLines)
-					if err == nil {
-						if ok_as {
-							Author.AppendLines += appendLines
-							Author.RemoveLines += removeLines
-						} else {
-							Author.AppendLines = appendLines
-							Author.RemoveLines = removeLines
-						}
-						AuthorStats[svnXmlLog.Author] = Author
-
-						if ok_ts {
-							AuthorTS.AppendLines += appendLines
-							AuthorTS.RemoveLines += removeLines
-						} else {
-							AuthorTS.AppendLines = appendLines
-							AuthorTS.RemoveLines = removeLines
-						}
-						authorTimeStat[saveTimeStr] = AuthorTS
-					}
-				}
-			} else if path.Action == "A" && path.Kind == "file" { // Action = A，添加
-				//修改计数器
-				Author.AddedFiles += 1
-				AuthorTS.AddedFiles += 1
-
-				AuthorStats[svnXmlLog.Author] = Author
-				authorTimeStat[saveTimeStr] = AuthorTS
-
-			} else if path.Action == "D" && path.Kind == "file" { // Action = D，删除
-				//修改计数器
-				Author.DeletedFiles += 1
-				AuthorTS.DeletedFiles += 1
-
-				AuthorStats[svnXmlLog.Author] = Author
-				authorTimeStat[saveTimeStr] = AuthorTS
-			}
-		}
-
-		authorTimeStats[svnXmlLog.Author] = authorTimeStat
-	}
 	//输出结果
 	ConsoleOutPutTable(AuthorStats)
 	//fmt.Printf("%v\n", authorTimeStats)
@@ -189,9 +184,9 @@ func main() {
 
 //console输出结果
 func ConsoleOutPutTable(AuthorStats map[string]statStruct.AuthorStat) { /*{{{*/
-	fmt.Printf(" ==User== \t==commits== ==Lines== ==Added== ==Modified== ==Deleted==\n")
+	fmt.Printf(" ==User== \t==Commits== ==AveragePerDay== ==Lines== ==Added== ==Modified== ==Deleted==\n")
 	for author, val := range AuthorStats {
-		fmt.Printf("%10s\t%5d\t%5d\t%7d\t%10d\t%7d\n", author, val.CommitCount, val.AppendLines+val.RemoveLines, val.AddedFiles, val.ModifiedFiles, val.DeletedFiles)
+		fmt.Printf("%10s\t%5d\t%10d\t%10d\t%7d\t%10d\t%7d\n", author, val.CommitCount, val.AverageCommitsPerDay, val.AppendLines+val.RemoveLines, val.AddedFiles, val.ModifiedFiles, val.DeletedFiles)
 	}
 } /*}}}*/
 
