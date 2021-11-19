@@ -204,7 +204,7 @@ func main() {
 		*endDate = now.Format(DATE_DAY)
 
 		log.Printf("Start to generate all svn stats, From revision %s to %s", *startDate, *endDate)
-		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true)
+		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog)
 		util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats)
 
 		return

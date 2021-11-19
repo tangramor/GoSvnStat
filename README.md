@@ -23,11 +23,12 @@ store-plaintext-passwords = no
 
 ```
 
-运行编译好的 GoSvnStat，以下是可使用的参数。生成的 svn 日志会放置在当前目录下的 `svn_logs` 子目录，统计数据会放置在当前目录下的 `svn_stats` 子目录。
+运行编译好的 GoSvnStat，以下是可使用的参数。
 
 * -url 参数指定 svn 仓库 URL，**必需参数**
 * -d 参数指定 svn 的开发路径
 * -t 参数指定画图的模版文件路径，模版文件是项目根目录下的 gostatsvn.html 文件
+* -all 参数统计到当前的全部日志信息，，该参数与其它时间、版本参数互斥。
 * -y 参数指定要统计的年份，该参数与其它时间、版本参数互斥。格式为 `2017`。如果指定了此参数，将一并生成**当年**按季度、按月份和按星期的统计数据
 * -q 参数指定要统计的季度，该参数与其它时间、版本参数互斥。格式为 `2017Q2`，其中 Q 后跟第几季度数字。
 * -m 参数指定要统计的月份，该参数与其它时间、版本参数互斥。格式为 `2017-02`。
@@ -35,11 +36,19 @@ store-plaintext-passwords = no
 * -s 参数限定版本开始日期，未指定的话就是一天前，格式为 `2017-03-06`，也可以直接使用版本数字
 * -e 参数限定版本结束日期，未指定的话就是今天，格式为 `2017-03-06`，也可以直接使用版本数字或 `HEAD`
 * -n 参数指定 svn 的 xml 格式日志和统计数据文件名称前缀，未指定的话就是 Temp
-* -reg 参数确定是否要强制重新生成日志文件，`y` 或 `n`，缺省为 `n`
-* -csvlog 参数确定是否要导出生成 csv 格式日志文件，`y` 或 `n`，缺省为 `n`。选择 -y 参数时会自动生成年度的 csv 日志文件
+* -reg 参数确定是否要强制重新生成日志文件和统计文件，`y` 或 `n`，缺省为 `n`
+* -csvlog 参数确定是否要导出生成 csv 格式日志文件，`y` 或 `n`，缺省为 `n`。但选择 -y 参数时会缺省自动生成指定年度的 csv 日志文件
+
+生成的 svn 日志会放置在当前目录下的 `svn_logs` 子目录；
+
+如果有 csv 导出，则会放置到当前目录下的 `svn_csv_logs` 子目录，包含 `_commits.csv` 和 `_paths.csv` 两个文件，以 `revision` 关联；
+
+统计数据会放置在当前目录下的 `svn_stats` 子目录。
 
 ```
 # svn 命令行日志生成方法： svn log -r {2021-11-01}:{2021-11-16} -v --xml https://svn.dev.50dg.com/icesvn/ice_server > ice_server_svnlog_202111.xml
+
+./GoSvnStat -all y -csvlog y -n ice_server -url https://svn.dev.50dg.com/icesvn/ice_server
 
 ./GoSvnStat -s 2021-01-01 -e 2021-11-16 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
 
