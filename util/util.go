@@ -159,7 +159,7 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 
 	log.Printf("Log filename is %s\n", log_name)
 
-	//不强制重新生成日志，结束日期不是今天且日志文件存在，则不重新生成
+	//不强制重新生成日志，结束日期不是今天（因为今天可能还有新提交）且日志文件存在，则不重新生成
 	if !reGenerate && endDate != now.Format(DATE_DAY) && fileExists(log_fullpath) {
 		log.Printf("Log file %s already exists", log_fullpath)
 		return log_fullpath, nil
