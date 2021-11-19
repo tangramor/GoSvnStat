@@ -199,7 +199,9 @@ func main() {
 	//全统计
 	if *all == "y" && dontignore {
 		*startDate = "1"
-		*endDate = "HEAD"
+
+		now := time.Now()
+		*endDate = now.Format(DATE_DAY)
 
 		log.Printf("Start to generate all svn stats, From revision %s to %s", *startDate, *endDate)
 		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true)
