@@ -149,6 +149,11 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 		log.Printf("End Date is %s\n", endDate)
 	}
 
+	if endDate == "HEAD" {
+		endDate = now.Format(DATE_DAY)
+		log.Printf("End Date is %s\n", endDate)
+	}
+
 	log_folder := pwd + "/svn_logs/"
 	if !fileExists(log_folder) {
 		os.MkdirAll(log_folder, os.FileMode(0755))
