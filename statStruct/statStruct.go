@@ -41,6 +41,12 @@ type WeekStats struct {
 	Stats []AuthorNameStat
 }
 
+type CustomStats struct {
+	StartDate string
+	EndDate   string
+	Stats     []AuthorNameStat
+}
+
 type ChartData struct {
 	XAxis  string
 	Series string

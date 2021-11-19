@@ -66,7 +66,7 @@ func GetSeries(dayAuthorStats statStruct.AuthorTimeStats) (seriesString string) 
 		sort.Strings(keys)
 		for _, k := range keys {
 			j++
-			tmpData[j] = stats[k].AppendLines + stats[k].RemoveLines
+			tmpData[j] = stats[k].AddedFiles + stats[k].ModifiedFiles + stats[k].DeletedFiles
 		}
 		serie.Data = tmpData[1 : j+1]
 		i++

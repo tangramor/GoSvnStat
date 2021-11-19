@@ -58,6 +58,11 @@ func main() {
 		*svnDir = pwd
 	}
 
+	//判断是否指定文件名称前缀，没有则设置为 Temp
+	if *logNamePrefix == "" {
+		*logNamePrefix = "Temp"
+	}
+
 	//判断有没有指定重新生成日志文件
 	reg := false
 	if *reGenerate == "y" {
@@ -87,8 +92,10 @@ func main() {
 		if err_w == nil && err_y == nil {
 			s, e, err := util.GetWeekStartEnd(y, w)
 			if err == nil {
-				*startDate = s
-				*endDate = e
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+				util.SaveStatsToJson(*logNamePrefix, yw[0], s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
+
+				return
 			}
 		}
 	}
@@ -107,8 +114,10 @@ func main() {
 		if err_m == nil && err_y == nil {
 			s, e, err := util.GetMonthStartEnd(y, m)
 			if err == nil {
-				*startDate = s
-				*endDate = e
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+				util.SaveStatsToJson(*logNamePrefix, ym[0], s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
+
+				return
 			}
 		}
 	}
@@ -128,8 +137,10 @@ func main() {
 		if err_q == nil && err_y == nil {
 			s, e, err := util.GetQuarterStartEnd(y, q)
 			if err == nil {
-				*startDate = s
-				*endDate = e
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+				util.SaveStatsToJson(*logNamePrefix, yq[0], s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
+
+				return
 			}
 		}
 	}
@@ -147,7 +158,7 @@ func main() {
 			s, e, _ := util.GetQuarterStartEnd(y, q)
 			log.Printf("Start to generate %d Q%d svn stats, From %s to %s", y, q, s, e)
 			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
-			util.SaveStatsToJson(*logNamePrefix, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
+			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
 		}
 
 		//月份统计
@@ -155,7 +166,7 @@ func main() {
 			s, e, _ := util.GetMonthStartEnd(y, m)
 			log.Printf("Start to generate %d-%d svn stats, From %s to %s", y, m, s, e)
 			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
-			util.SaveStatsToJson(*logNamePrefix, s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
+			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
 		}
 
 		//星期统计
@@ -163,21 +174,23 @@ func main() {
 			s, e, _ := util.GetWeekStartEnd(y, w)
 			log.Printf("Start to generate %d week %d svn stats, From %s to %s", y, w, s, e)
 			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
-			util.SaveStatsToJson(*logNamePrefix, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
+			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 		}
 
 		//年度统计
 		log.Printf("Start to generate year %d svn stats, From %s to %s", y, *startDate, *endDate)
 		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
-		util.SaveStatsToJson(*logNamePrefix, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
+		util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
 
 		return
 	}
 
 	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
+	util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats) //Custome
 
 	//输出结果
 	ConsoleOutPutTable(AuthorStats)
+
 	//fmt.Printf("%v\n", authorTimeStats)
 	minTimestamp, maxTimestamp := getMinMaxTimestamp(authorTimeStats)
 	fmt.Printf("%d\t%d\n", minTimestamp, maxTimestamp)
@@ -320,7 +333,7 @@ func getMinMaxTimestamp(authorTimeStats statStruct.AuthorTimeStats) (minTimestam
 //console按小时输出结果
 //todo 此处有bug,1.没有全部按小时归并，还是按每天每小时归并的。2.显示的小时不是按24小时制
 func ConsoleOutPutHourTable(authorTimeStats statStruct.AuthorTimeStats) { /*{{{*/
-	defaultSmallestTime, _ := time.Parse("2006-01-02T15:04:05Z", DEFAULT_SMALLEST_TIME_STRING)
+	defaultSmallestTime, _ := time.Parse(DATE_SECOND, DEFAULT_SMALLEST_TIME_STRING)
 	fmt.Printf(" ==user== \t==hour==\t==commits== ==lines== ==Added== ==Modified== ==Deleted==\n")
 	//先取到时间的区间值
 	for authorName, Author := range authorTimeStats {

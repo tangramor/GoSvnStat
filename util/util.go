@@ -4,6 +4,7 @@ package util
 import (
 	"GoSvnStat/statStruct"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -137,17 +138,13 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	now := time.Now()
 
 	if startDate == "" {
-		startDate = now.AddDate(0, 0, -1).Format("2006-01-02")
+		startDate = now.AddDate(0, 0, -1).Format(DATE_DAY)
 		log.Printf("Start Date is %s\n", startDate)
 	}
 
 	if endDate == "" {
-		endDate = now.Format("2006-01-02")
+		endDate = now.Format(DATE_DAY)
 		log.Printf("End Date is %s\n", endDate)
-	}
-
-	if namePrefix == "" {
-		namePrefix = "Temp"
 	}
 
 	log_folder := pwd + "/svn_logs/"
@@ -161,7 +158,7 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	log.Printf("Log filename is %s\n", log_name)
 
 	//不强制重新生成日志，结束日期不是今天且日志文件存在，则不重新生成
-	if !reGenerate && endDate != now.Format("2006-01-02") && fileExists(log_fullpath) {
+	if !reGenerate && endDate != now.Format(DATE_DAY) && fileExists(log_fullpath) {
 		log.Printf("Log file %s already exists", log_fullpath)
 		return log_fullpath, nil
 	}
@@ -200,7 +197,7 @@ func CheckErr(err error) (err2 error) { /*{{{*/
 //获取当年第几周的起始日期和结束日期
 func GetWeekStartEnd(year int, week int) (startDate string, endDate string, err error) {
 	if week < 53 && week > 0 {
-		firstday, err := time.Parse("2006-01-02", strconv.Itoa(year)+"-01-01")
+		firstday, err := time.Parse(DATE_DAY, strconv.Itoa(year)+"-01-01")
 		if err == nil {
 			firstMon := firstday
 			//获取当年第一天是周几
@@ -214,9 +211,9 @@ func GetWeekStartEnd(year int, week int) (startDate string, endDate string, err 
 				firstMon = time.Date(firstday.Year(), firstday.Month(), firstday.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, offset)
 			}
 			weekMonday := time.Date(firstMon.Year(), firstMon.Month(), firstMon.Day(), 0, 0, 0, 0, time.Local).AddDate(0, 0, (week-1)*7)
-			startDate := weekMonday.Format("2006-01-02")
+			startDate := weekMonday.Format(DATE_DAY)
 			weekSunday := weekMonday.AddDate(0, 0, 6)
-			endDate := weekSunday.Format("2006-01-02")
+			endDate := weekSunday.Format(DATE_DAY)
 
 			return startDate, endDate, nil
 		}
@@ -232,12 +229,12 @@ func GetMonthStartEnd(year int, month int) (startDate string, endDate string, er
 	if month < 10 {
 		m_str = "0" + m_str
 	}
-	firstday, err := time.Parse("2006-01-02", strconv.Itoa(year)+"-"+m_str+"-01")
+	firstday, err := time.Parse(DATE_DAY, strconv.Itoa(year)+"-"+m_str+"-01")
 	if err == nil {
-		startDate := firstday.Format("2006-01-02")
+		startDate := firstday.Format(DATE_DAY)
 
 		lastday := firstday.AddDate(0, 1, 0).Add(time.Nanosecond * -1)
-		endDate = lastday.Format("2006-01-02")
+		endDate = lastday.Format(DATE_DAY)
 
 		return startDate, endDate, nil
 	}
@@ -275,8 +272,8 @@ func GetQuarterStartEnd(year int, quarter int) (startDate string, endDate string
 
 //获取起始日期和结束日期之间的天数，包括结束日期当天
 func GetDurationDays(startDate string, endDate string) (days int) {
-	s, _ := time.Parse("2006-01-02", startDate)
-	e, _ := time.Parse("2006-01-02", endDate)
+	s, _ := time.Parse(DATE_DAY, startDate)
+	e, _ := time.Parse(DATE_DAY, endDate)
 
 	return int(e.Sub(s).Hours()/24) + 1
 }
@@ -321,7 +318,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 
 		//记录人和日期的详细log，用于细分统计
 		authorTimeStat, ok_tss := authorTimeStats[svnXmlLog.Author]
-		saveTime, err := time.Parse("2006-01-02T15:04:05Z", svnXmlLog.Date)
+		saveTime, err := time.Parse(DATE_SECOND, svnXmlLog.Date)
 		CheckErr(err)
 		saveTimeStr := saveTime.Format(DATE_SECOND)
 
@@ -406,10 +403,14 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 }
 
 //将数据保存到 JSON 文件
-func SaveStatsToJson(namePrefix string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
+func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
 	pwd, _ := os.Getwd()
 
-	log_folder := pwd + "/svn_stats/"
+	if subFolder != "" {
+		subFolder += "/"
+	}
+
+	log_folder := pwd + "/svn_stats/" + subFolder
 	if !fileExists(log_folder) {
 		os.MkdirAll(log_folder, os.FileMode(0755))
 	}
@@ -427,15 +428,25 @@ func SaveStatsToJson(namePrefix string, startDate string, endDate string, year i
 
 	switch typeName {
 	case YEAR_STATS:
-		SaveYearStatsToJsonFile(year, authorNameStats, log_fullpath+"year_"+strconv.Itoa(year)+".json", reGenerate)
+		filename := log_fullpath + "year_" + strconv.Itoa(year)
+		SaveYearStatsToJsonFile(year, authorNameStats, filename+".json", reGenerate)
+		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	case QUARTER_STATS:
-		SaveQuarterStatsToJsonFile(year, typeValue, authorNameStats, log_fullpath+"quarter_"+strconv.Itoa(year)+"Q"+strconv.Itoa(typeValue)+".json", reGenerate)
+		filename := log_fullpath + "quarter_" + strconv.Itoa(year) + "Q" + strconv.Itoa(typeValue)
+		SaveQuarterStatsToJsonFile(year, typeValue, authorNameStats, filename+".json", reGenerate)
+		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	case MONTH_STATS:
-		SaveMonthStatsToJsonFile(year, typeValue, authorNameStats, log_fullpath+"month_"+strconv.Itoa(year)+"M"+strconv.Itoa(typeValue)+".json", reGenerate)
+		filename := log_fullpath + "month_" + strconv.Itoa(year) + "M" + strconv.Itoa(typeValue)
+		SaveMonthStatsToJsonFile(year, typeValue, authorNameStats, filename+".json", reGenerate)
+		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	case WEEK_STATS:
-		SaveWeekStatsToJsonFile(year, typeValue, authorNameStats, log_fullpath+"week_"+strconv.Itoa(year)+"W"+strconv.Itoa(typeValue)+".json", reGenerate)
+		filename := log_fullpath + "week_" + strconv.Itoa(year) + "W" + strconv.Itoa(typeValue)
+		SaveWeekStatsToJsonFile(year, typeValue, authorNameStats, filename+".json", reGenerate)
+		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	default:
-
+		filename := log_fullpath + startDate + "_" + endDate
+		SaveCustomStatsToJsonFile(startDate, endDate, authorNameStats, filename+".json", reGenerate)
+		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	}
 
 }
@@ -519,4 +530,64 @@ func SaveWeekStatsToJsonFile(year int, week int, authorStats []statStruct.Author
 	file, _ := json.MarshalIndent(weekStats, "", " ")
 
 	_ = ioutil.WriteFile(filepath, file, 0644)
+}
+
+func SaveCustomStatsToJsonFile(startDate string, endDate string, authorStats []statStruct.AuthorNameStat, filepath string, reGenerate bool) {
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(filepath) {
+		log.Printf("Stats file %s already exists", filepath)
+		return
+	}
+
+	log.Printf("Stats filename is %s\n", filepath)
+
+	customStats := statStruct.CustomStats{}
+
+	customStats.StartDate = startDate
+	customStats.EndDate = endDate
+
+	customStats.Stats = authorStats
+
+	file, _ := json.MarshalIndent(customStats, "", " ")
+
+	_ = ioutil.WriteFile(filepath, file, 0644)
+}
+
+func SaveStatsToCsvFile(authorStats []statStruct.AuthorNameStat, filepath string, reGenerate bool) {
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(filepath) {
+		log.Printf("Stats CSV file %s already exists", filepath)
+		return
+	}
+
+	log.Printf("Stats CSV filename is %s\n", filepath)
+
+	f, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		log.Fatalln("Error: ", err)
+		return
+	}
+
+	writer := csv.NewWriter(f)
+	var header = []string{"Author", "Commits", "AverageCommitsPerDay", "Lines", "FilesAdded", "FilesModified", "FilesDeleted"}
+	writer.Write(header)
+
+	for _, authorStat := range authorStats {
+		var data = []string{authorStat.Author,
+			strconv.Itoa(authorStat.Stat.CommitCount),
+			strconv.Itoa(authorStat.Stat.AverageCommitsPerDay),
+			strconv.Itoa(authorStat.Stat.AppendLines + authorStat.Stat.RemoveLines),
+			strconv.Itoa(authorStat.Stat.AddedFiles),
+			strconv.Itoa(authorStat.Stat.ModifiedFiles),
+			strconv.Itoa(authorStat.Stat.DeletedFiles),
+		}
+		writer.Write(data)
+	}
+
+	// 将缓存中的内容写入到文件里
+	writer.Flush()
+
+	if err = writer.Error(); err != nil {
+		log.Fatalln("Error: ", err)
+	}
 }
