@@ -23,9 +23,11 @@ import (
 
 //svn xml log path struct
 type Path struct {
-	Action string `xml:"action,attr"`
-	Kind   string `xml:"kind,attr"`
-	Path   string `xml:",chardata"`
+	Action   string `xml:"action,attr"`
+	Kind     string `xml:"kind,attr"`
+	Path     string `xml:",chardata"`
+	PropMods string `xml:"prop-mods,attr"`
+	TextMods string `xml:"text-mods,attr"`
 }
 
 //svn xml log logentry struct
@@ -279,7 +281,7 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 }
 
 //根据输入参数生成统计数据
-func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
 	//获取天数
 	days := GetDurationDays(startDate, endDate)
 	log.Printf("Total %d days during the stats", days)
@@ -311,6 +313,11 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	authorTimeStats := make(statStruct.AuthorTimeStats)
 
 	AuthorStats := make(map[string]statStruct.AuthorStat)
+
+	//导出 CSV 格式的 log
+	if csvExport {
+		ExportLogToCsv(svnXmlLogs, startDate, endDate, svnUrl, logNamePrefix, reGenerate)
+	}
 
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
 		//综合统计
@@ -400,6 +407,75 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	}
 
 	return authorTimeStats, AuthorStats
+}
+
+func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svnUrl string, fileNamePrefix string, reGenerate bool) {
+	pwd, _ := os.Getwd()
+
+	log_folder := pwd + "/svn_csv_logs/"
+	if !fileExists(log_folder) {
+		os.MkdirAll(log_folder, os.FileMode(0755))
+	}
+
+	commitLog := log_folder + fileNamePrefix + "_svnlog_" + startDate + "_" + endDate + "_commits.csv"
+	pathsLog := log_folder + fileNamePrefix + "_svnlog_" + startDate + "_" + endDate + "_paths.csv"
+
+	//文件已存在且未要求重新生成
+	if !reGenerate && fileExists(commitLog) {
+		log.Printf("SVN Log CSV file %s already exists", commitLog)
+		return
+	}
+
+	log.Printf("SVN Log CSV filename is %s, detailed paths log filename is %s\n", commitLog, pathsLog)
+
+	f_commit, err_c := os.OpenFile(commitLog, os.O_WRONLY|os.O_CREATE, 0666)
+	f_paths, err_p := os.OpenFile(pathsLog, os.O_WRONLY|os.O_CREATE, 0666)
+	if err_c != nil || err_p != nil {
+		log.Fatalln("Error: ", err_c, err_p)
+		return
+	}
+
+	writer_c := csv.NewWriter(f_commit)
+	writer_p := csv.NewWriter(f_paths)
+
+	var headerCommit = []string{"revision", "author", "date", "msg", "url"}
+	var headerPaths = []string{"revision", "path", "action", "kind", "prop-mods", "text-mods"}
+
+	writer_c.Write(headerCommit)
+	writer_p.Write(headerPaths)
+
+	for _, svnXmlLog := range svnXmlLogs.Logentry {
+		var data_c = []string{svnXmlLog.Revision,
+			svnXmlLog.Author,
+			svnXmlLog.Date,
+			svnXmlLog.Msg,
+			svnUrl,
+		}
+		writer_c.Write(data_c)
+
+		for _, path := range svnXmlLog.Paths {
+			var data_p = []string{svnXmlLog.Revision,
+				path.Path,
+				path.Action,
+				path.Kind,
+				path.PropMods,
+				path.TextMods,
+			}
+			writer_p.Write(data_p)
+		}
+	}
+
+	// 将缓存中的内容写入到文件里
+	writer_c.Flush()
+	writer_p.Flush()
+
+	if err := writer_c.Error(); err != nil {
+		log.Fatalln("Commit File Error: ", err)
+	}
+
+	if err := writer_p.Error(); err != nil {
+		log.Fatalln("Paths File Error: ", err)
+	}
 }
 
 //将数据保存到 JSON 文件

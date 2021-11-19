@@ -32,6 +32,8 @@ var svnDir *string = flag.String("d", "", "code working directory")
 var svnUrl *string = flag.String("url", "", "svn repository URL")
 var logNamePrefix *string = flag.String("n", "", "svn log file name prefix")
 var reGenerate *string = flag.String("reg", "n", "force to regenerate log file, y or n")
+var exportCsvLog *string = flag.String("csvlog", "n", "generate csv log files, y or n")
+
 var chartTemplate *string = flag.String("t", "", "hightcharts Template file")
 var chartData statStruct.ChartData
 
@@ -70,6 +72,12 @@ func main() {
 		reg = true
 	}
 
+	csvlog := false
+	if *exportCsvLog == "y" {
+		log.Println("-csvlog is y, will export the log to csv files")
+		csvlog = true
+	}
+
 	var dontignore = true //按优先级忽略
 
 	//按开始、结束日期统计，第一优先，即有这个参数就忽略其它时间参数
@@ -92,7 +100,7 @@ func main() {
 		if err_w == nil && err_y == nil {
 			s, e, err := util.GetWeekStartEnd(y, w)
 			if err == nil {
-				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog)
 				util.SaveStatsToJson(*logNamePrefix, yw[0], s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 
 				return
@@ -114,7 +122,7 @@ func main() {
 		if err_m == nil && err_y == nil {
 			s, e, err := util.GetMonthStartEnd(y, m)
 			if err == nil {
-				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog)
 				util.SaveStatsToJson(*logNamePrefix, ym[0], s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
 
 				return
@@ -137,7 +145,7 @@ func main() {
 		if err_q == nil && err_y == nil {
 			s, e, err := util.GetQuarterStartEnd(y, q)
 			if err == nil {
-				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog)
 				util.SaveStatsToJson(*logNamePrefix, yq[0], s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
 
 				return
@@ -157,7 +165,7 @@ func main() {
 		for q := 1; q < 5; q++ {
 			s, e, _ := util.GetQuarterStartEnd(y, q)
 			log.Printf("Start to generate %d Q%d svn stats, From %s to %s", y, q, s, e)
-			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false)
 			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
 		}
 
@@ -165,7 +173,7 @@ func main() {
 		for m := 1; m < 13; m++ {
 			s, e, _ := util.GetMonthStartEnd(y, m)
 			log.Printf("Start to generate %d-%d svn stats, From %s to %s", y, m, s, e)
-			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false)
 			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
 		}
 
@@ -173,19 +181,19 @@ func main() {
 		for w := 1; w < 53; w++ {
 			s, e, _ := util.GetWeekStartEnd(y, w)
 			log.Printf("Start to generate %d week %d svn stats, From %s to %s", y, w, s, e)
-			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false)
 			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 		}
 
 		//年度统计
 		log.Printf("Start to generate year %d svn stats, From %s to %s", y, *startDate, *endDate)
-		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
+		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true)
 		util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
 
 		return
 	}
 
-	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg)
+	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog)
 	util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats) //Custome
 
 	//输出结果
