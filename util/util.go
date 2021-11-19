@@ -165,9 +165,17 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 		return log_fullpath, nil
 	}
 
+	if strings.Contains(startDate, "-") {
+		startDate = startDate + DAY_START_SECOND
+	}
+
+	if strings.Contains(endDate, "-") {
+		endDate = endDate + DAY_END_SECOND
+	}
+
 	app := "./GenerateSvnLog.sh"
-	param1 := startDate + DAY_START_SECOND
-	param2 := endDate + DAY_END_SECOND
+	param1 := startDate
+	param2 := endDate
 	param3 := svnUrl
 	param4 := log_fullpath
 
