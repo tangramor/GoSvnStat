@@ -166,8 +166,8 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	}
 
 	app := "./GenerateSvnLog.sh"
-	param1 := startDate
-	param2 := endDate
+	param1 := startDate + DAY_START_SECOND
+	param2 := endDate + DAY_END_SECOND
 	param3 := svnUrl
 	param4 := log_fullpath
 

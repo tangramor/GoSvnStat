@@ -21,6 +21,7 @@ const (
 	DATE_SECOND                  = "2006-01-02T15:04:05Z"
 )
 
+var all *string = flag.String("all", "n", "svn log for all; priority 6")
 var year *string = flag.String("y", "", "svn log for a year, like 2006; priority 5")
 var quarter *string = flag.String("q", "", "svn log for a quarter, like 2006Q1; priority 4")
 var month *string = flag.String("m", "", "svn log for a month, like 2006-01; priority 3")
@@ -155,8 +156,7 @@ func main() {
 
 	//按年统计
 	if *year != "" && dontignore {
-		*startDate = *year + "-01-01"
-		*endDate = *year + "-12-31"
+		dontignore = false
 
 		y, _ := strconv.Atoi(*year)
 
@@ -185,10 +185,25 @@ func main() {
 			util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 		}
 
+		*startDate = *year + "-01-01"
+		*endDate = *year + "-12-31"
+
 		//年度统计
 		log.Printf("Start to generate year %d svn stats, From %s to %s", y, *startDate, *endDate)
 		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true)
 		util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
+
+		return
+	}
+
+	//全统计
+	if *all == "y" && dontignore {
+		*startDate = "1"
+		*endDate = "HEAD"
+
+		log.Printf("Start to generate all svn stats, From revision %s to %s", *startDate, *endDate)
+		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true)
+		util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats)
 
 		return
 	}
