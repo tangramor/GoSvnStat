@@ -19,6 +19,8 @@ go: creating new go.mod: module GoSvnStat
 go: to add module requirements and sums:
 	go mod tidy
 
+➜  GoSvnStat git:(master) ✗ go env -w GOPROXY=https://goproxy.cn,direct
+
 ➜  GoSvnStat git:(master) ✗ go env -w GO111MODULE="on"
 
 ➜  GoSvnStat git:(master) ✗ go mod tidy
