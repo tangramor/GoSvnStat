@@ -66,7 +66,7 @@ store-plaintext-passwords = no
 统计数据会放置在当前目录下的 `svn_stats` 子目录。
 
 ```
-# svn 命令行日志生成方法： svn log -r {2021-11-01}:{2021-11-16} -v --xml https://svn.dev.50dg.com/icesvn/ice_server > ice_server_svnlog_202111.xml
+# svn 命令行日志生成方法： svn log -r {2021-11-01T00:00:00Z}:{2021-11-16T23:59:59Z} -v --xml https://svn.dev.50dg.com/icesvn/ice_server > ice_server_svnlog_202111.xml
 
 ./GoSvnStat -all y -csvlog y -n ice_server -url https://svn.dev.50dg.com/icesvn/ice_server
 
