@@ -60,7 +60,7 @@ func GetSeries(dayAuthorStats statStruct.AuthorTimeStats) (seriesString string) 
 		j := 0
 		tmpData := make([]int, 365)
 		var keys []string
-		for k, _ := range stats {
+		for k := range stats {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)

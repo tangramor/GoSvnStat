@@ -339,7 +339,7 @@ func getMinMaxTimestamp(authorTimeStats statStruct.AuthorTimeStats) (minTimestam
 	//先取得时间的最大值和最小值
 	for _, detail := range authorTimeStats {
 		//fmt.Printf("%s\t%v\n", author, detail)
-		for timeString, _ := range detail {
+		for timeString := range detail {
 			timeTime, err := time.Parse(DATE_SECOND, timeString)
 			if err == nil {
 				if minTimestamp == 0 || minTimestamp > timeTime.Unix() {
@@ -364,7 +364,7 @@ func ConsoleOutPutHourTable(authorTimeStats statStruct.AuthorTimeStats) { /*{{{*
 	for authorName, Author := range authorTimeStats {
 		var minTime time.Time
 		var maxTime time.Time
-		for sTime, _ := range Author {
+		for sTime := range Author {
 			fmtTime, err := time.Parse(DATE_HOUR, sTime)
 			util.CheckErr(err)
 			if minTime.Before(defaultSmallestTime) || minTime.After(fmtTime) {
