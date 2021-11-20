@@ -6,7 +6,23 @@ A svn stat tool written by Go.
 
 ## Build 编译
 
-配置好 golang 开发环境，执行 `go build`
+配置好 golang 开发环境，执行 `go build`。下面是在 MacOS 上的 oh-my-zsh 下的操作过程。
+
+```
+➜  GoSvnStat git:(master) go build
+go: cannot find main module, but found .git/config in /Users/wangjh/workspace/Goland/GoSvnStat
+	to create a module there, run:
+	go mod init
+
+➜  GoSvnStat git:(master) go mod init GoSvnStat
+go: creating new go.mod: module GoSvnStat
+go: to add module requirements and sums:
+	go mod tidy
+
+➜  GoSvnStat git:(master) ✗ go mod tidy
+
+➜  GoSvnStat git:(master) ✗ go build
+```
 
 
 ## Usage 用法：
