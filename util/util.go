@@ -291,6 +291,7 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 //根据输入参数生成统计数据
 func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
 	//获取天数
+	//TODO: 如果 startDate 为数字版本号，需要获得正确的起始日期
 	days := GetDurationDays(startDate, endDate)
 	log.Printf("Total %d days during the stats", days)
 
@@ -453,10 +454,12 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 	writer_p.Write(headerPaths)
 
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
+		d, _ := time.Parse(DATE_NANOSEC, svnXmlLog.Date)
+
 		var data_c = []string{svnXmlLog.Revision,
 			svnXmlLog.Author,
-			svnXmlLog.Date,
-			svnXmlLog.Msg,
+			d.Format(DATE_MYSQL),
+			strings.Replace(svnXmlLog.Msg, "\n", ". ", -1),
 			svnUrl,
 		}
 		writer_c.Write(data_c)

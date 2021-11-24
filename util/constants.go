@@ -11,4 +11,6 @@ const (
 	QUARTER_STATS                = "QuarterStats"
 	MONTH_STATS                  = "MonthStats"
 	WEEK_STATS                   = "WeekStats"
+	DATE_NANOSEC                 = "2006-01-02T15:04:05.999999Z"
+	DATE_MYSQL                   = "2006-01-02 15:04:05"
 )
