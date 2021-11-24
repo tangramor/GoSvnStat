@@ -128,6 +128,36 @@ func GetSvnRoot(workDir string) (svnRoot string, err error) { /*{{{*/
 	}
 } /*}}}*/
 
+//根据 svn revision 号获取提交日期
+func GetSvnDateByRevision(revision string, svnUrl string) (date string, err error) { /*{{{*/
+	app := "svn"
+	param1 := "log"
+	param2 := "--xml"
+	param3 := "-r"
+
+	cmd := exec.Command(app, param1, param2, param3, revision, svnUrl)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
+		return "", err
+	} else {
+		re := regexp.MustCompile(`(?i)<date>(.*)</date>`)
+		date := re.FindStringSubmatch(out.String())
+		if len(date) > 1 {
+			rdate, rerr := time.Parse(DATE_NANOSEC, date[1])
+			CheckErr(rerr)
+			return rdate.Format(DATE_DAY), nil
+		} else {
+			log.Fatalf("cannot find the svn date by svn revision")
+			return "", nil
+		}
+	}
+} /*}}}*/
+
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !errors.Is(err, os.ErrNotExist)
@@ -290,13 +320,15 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 
 //根据输入参数生成统计数据
 func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
-	//获取天数
-	//TODO: 如果 startDate 为数字版本号，需要获得正确的起始日期
-	days := GetDurationDays(startDate, endDate)
-	log.Printf("Total %d days during the stats", days)
-
 	//生成 svn 日志文件
 	svnXmlFile, err := GetSvnLogFile(startDate, endDate, svnUrl, logNamePrefix, reGenerate)
+
+	//获取天数
+	if !strings.Contains(startDate, "-") {
+		startDate, _ = GetSvnDateByRevision(startDate, svnUrl)
+	}
+	days := GetDurationDays(startDate, endDate)
+	log.Printf("Total %d days during the stats", days)
 
 	if err != nil {
 		log.Println(err)
