@@ -549,24 +549,61 @@ func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endD
 	case YEAR_STATS:
 		filename := log_fullpath + "year_" + strconv.Itoa(year)
 		SaveYearStatsToJsonFile(year, authorNameStats, filename+".json", reGenerate)
-		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	case QUARTER_STATS:
 		filename := log_fullpath + "quarter_" + strconv.Itoa(year) + "Q" + strconv.Itoa(typeValue)
 		SaveQuarterStatsToJsonFile(year, typeValue, authorNameStats, filename+".json", reGenerate)
-		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	case MONTH_STATS:
 		filename := log_fullpath + "month_" + strconv.Itoa(year) + "M" + strconv.Itoa(typeValue)
 		SaveMonthStatsToJsonFile(year, typeValue, authorNameStats, filename+".json", reGenerate)
-		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	case WEEK_STATS:
 		filename := log_fullpath + "week_" + strconv.Itoa(year) + "W" + strconv.Itoa(typeValue)
 		SaveWeekStatsToJsonFile(year, typeValue, authorNameStats, filename+".json", reGenerate)
-		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	default:
 		filename := log_fullpath + startDate + "_" + endDate
 		SaveCustomStatsToJsonFile(startDate, endDate, authorNameStats, filename+".json", reGenerate)
-		SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 	}
+
+}
+
+//将数据保存到 CSV 文件
+func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
+	pwd, _ := os.Getwd()
+
+	if subFolder != "" {
+		subFolder += "/"
+	}
+
+	log_folder := pwd + "/svn_stats/" + subFolder
+	if !fileExists(log_folder) {
+		os.MkdirAll(log_folder, os.FileMode(0755))
+	}
+
+	log_fullpath := log_folder + namePrefix + "_svnstats_"
+
+	authorNameStats := []statStruct.AuthorNameStat{}
+	for author, authorstat := range authorStats {
+		authorNameStat := statStruct.AuthorNameStat{
+			Author: author,
+			Stat:   authorstat,
+		}
+		authorNameStats = append(authorNameStats, authorNameStat)
+	}
+
+	filename := log_fullpath + startDate + "_" + endDate
+	switch typeName {
+	case YEAR_STATS:
+		filename = log_fullpath + "year_" + strconv.Itoa(year)
+	case QUARTER_STATS:
+		filename = log_fullpath + "quarter_" + strconv.Itoa(year) + "Q" + strconv.Itoa(typeValue)
+	case MONTH_STATS:
+		filename = log_fullpath + "month_" + strconv.Itoa(year) + "M" + strconv.Itoa(typeValue)
+	case WEEK_STATS:
+		filename = log_fullpath + "week_" + strconv.Itoa(year) + "W" + strconv.Itoa(typeValue)
+	default:
+
+	}
+
+	SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
 
 }
 
