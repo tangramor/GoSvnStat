@@ -310,10 +310,9 @@ func GetQuarterStartEnd(year int, quarter int) (startDate string, endDate string
 }
 
 //获取起始日期和结束日期之间的天数，包括结束日期当天
-// func GetDurationDays(startDate string, endDate string) (days int) {
-func GetDurationDays(s time.Time, e time.Time) (days int) {
-	// s, _ := time.Parse(DATE_DAY, startDate)
-	// e, _ := time.Parse(DATE_DAY, endDate)
+func GetDurationDays(startDate string, endDate string) (days int) {
+	s, _ := time.Parse(DATE_DAY, startDate)
+	e, _ := time.Parse(DATE_DAY, endDate)
 
 	return int(e.Sub(s).Hours()/24) + 1
 }
@@ -321,9 +320,6 @@ func GetDurationDays(s time.Time, e time.Time) (days int) {
 //根据输入参数生成统计数据
 // extraField / extraValue 用于给 csv 日志添加额外的字段值，比如该项目 id
 func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool, extraField string, extraValue string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
-	sd, _ := time.Parse(DATE_DAY, startDate)
-	ed, _ := time.Parse(DATE_DAY, endDate)
-
 	//生成 svn 日志文件
 	svnXmlFile, err := GetSvnLogFile(startDate, endDate, svnUrl, logNamePrefix, reGenerate)
 
@@ -331,7 +327,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	if !strings.Contains(startDate, "-") {
 		startDate, _ = GetSvnDateByRevision(startDate, svnUrl)
 	}
-	days := GetDurationDays(sd, ed)
+	days := GetDurationDays(startDate, endDate)
 	log.Printf("Total %d days during the stats", days)
 
 	if err != nil {
@@ -363,6 +359,9 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	if csvExport {
 		ExportLogToCsv(svnXmlLogs, startDate, endDate, svnUrl, logNamePrefix, reGenerate, extraField, extraValue)
 	}
+
+	sd, _ := time.Parse(DATE_SECOND, startDate+DAY_START_SECOND)
+	ed, _ := time.Parse(DATE_SECOND, endDate+DAY_END_SECOND)
 
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
 		//综合统计

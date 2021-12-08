@@ -35,7 +35,7 @@ go: to add module requirements and sums:
 
 ```
 [groups]
-dev = svn.dev.50dg.com
+dev = svnserver.com
 
 [dev]
 ssl-client-cert-file = <这里写.p12证书文件的全路径>
@@ -117,18 +117,20 @@ Options:
 统计数据会放置在当前目录下的 `svn_stats` 子目录。
 
 ```
-# svn 命令行日志生成方法： svn log -r {2021-11-01T00:00:00Z}:{2021-11-16T23:59:59Z} -v --xml https://svn.dev.50dg.com/icesvn/ice_server > ice_server_svnlog_202111.xml
+# svn 命令行日志生成方法： svn log -r {2021-11-01T00:00:00Z}:{2021-11-16T23:59:59Z} -v --xml https://svnserver.com/icesvn/ice_server > ice_server_svnlog_202111.xml
 
-./GoSvnStat -all y -csvlog y -n ice_server -url https://svn.dev.50dg.com/icesvn/ice_server
+./GoSvnStat -y 2017 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csvextf="projectid,svnurlid" -csvextv="1,1" -url https://svnserver.com/icesvn/ice_server
 
-./GoSvnStat -s 2021-01-01 -e 2021-11-16 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
+./GoSvnStat -all y -csvlog y -n ice_server -url https://svnserver.com/icesvn/ice_server
 
-./GoSvnStat -y 2017 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
+./GoSvnStat -s 2021-01-01 -e 2021-11-16 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
 
-./GoSvnStat -q 2017Q3 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
+./GoSvnStat -y 2017 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
 
-./GoSvnStat -m 2018-02 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
+./GoSvnStat -q 2017Q3 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
 
-./GoSvnStat -w 2018W11 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svn.dev.50dg.com/icesvn/ice_server
+./GoSvnStat -m 2018-02 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
+
+./GoSvnStat -w 2018W11 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
 ```
 
