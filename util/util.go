@@ -319,7 +319,8 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 }
 
 //根据输入参数生成统计数据
-func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+// extraField / extraValue 用于给 csv 日志添加额外的字段值，比如该项目 id
+func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool, extraField string, extraValue string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
 	//生成 svn 日志文件
 	svnXmlFile, err := GetSvnLogFile(startDate, endDate, svnUrl, logNamePrefix, reGenerate)
 
@@ -357,7 +358,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 
 	//导出 CSV 格式的 log
 	if csvExport {
-		ExportLogToCsv(svnXmlLogs, startDate, endDate, svnUrl, logNamePrefix, reGenerate)
+		ExportLogToCsv(svnXmlLogs, startDate, endDate, svnUrl, logNamePrefix, reGenerate, extraField, extraValue)
 	}
 
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
@@ -450,7 +451,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	return authorTimeStats, AuthorStats
 }
 
-func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svnUrl string, fileNamePrefix string, reGenerate bool) {
+func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svnUrl string, fileNamePrefix string, reGenerate bool, extraField string, extraValue string) {
 	pwd, _ := os.Getwd()
 
 	log_folder := pwd + "/svn_csv_logs/"
@@ -481,6 +482,10 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 
 	var headerCommit = []string{"revision", "author", "date", "msg", "url"}
 	var headerPaths = []string{"revision", "path", "action", "kind", "prop-mods", "text-mods"}
+	if extraField != "" {
+		headerCommit = append(headerCommit, extraField)
+		headerPaths = append(headerPaths, extraField)
+	}
 
 	writer_c.Write(headerCommit)
 	writer_p.Write(headerPaths)
@@ -494,6 +499,10 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 			strings.Replace(svnXmlLog.Msg, "\n", ". ", -1),
 			svnUrl,
 		}
+		if extraField != "" {
+			data_c = append(data_c, extraValue)
+		}
+
 		writer_c.Write(data_c)
 
 		for _, path := range svnXmlLog.Paths {
@@ -504,6 +513,10 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 				path.PropMods,
 				path.TextMods,
 			}
+			if extraField != "" {
+				data_p = append(data_p, extraValue)
+			}
+
 			writer_p.Write(data_p)
 		}
 	}
