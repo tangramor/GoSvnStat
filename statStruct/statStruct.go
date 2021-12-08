@@ -2,12 +2,14 @@ package statStruct
 
 type AuthorStat struct {
 	CommitCount          int
-	AverageCommitsPerDay int
+	AverageCommitsPerDay float64
 	AppendLines          int
 	RemoveLines          int
 	ModifiedFiles        int
 	AddedFiles           int
 	DeletedFiles         int
+	StartDate            string
+	EndDate              string
 }
 
 type AuthorTimeStat map[string]AuthorStat      //map[time]AuthorStat

@@ -59,31 +59,37 @@ store-plaintext-passwords = no
 * -n 参数指定 svn 的 xml 格式日志和统计数据文件名称前缀，未指定的话就是 Temp
 * -reg 参数确定是否要强制重新生成日志文件和统计文件，`y` 或 `n`，缺省为 `n`
 * -csvlog 参数确定是否要导出生成 csv 格式日志文件，`y` 或 `n`，缺省为 `n`。但选择 -y 参数时会缺省自动生成指定年度的 csv 日志文件
-* -extf 参数确定是否要在导出的 csv 格式日志文件里附加字段，需要 -csvlog=y，为空值即不添加
-* -extv 参数为要在导出的 csv 格式日志文件里附加字段的值，需要 -csvlog=y，若 -extf 为空值此参数无效果
+* -logextf 参数确定是否要在导出的 csv 格式日志文件里附加字段，例如 projectid，需要 -csvlog=y，为空值即不添加
+* -logextv 参数为要在导出的 csv 格式日志文件里附加字段的值，需要 -csvlog=y，若 -logextf 为空值此参数无效果
 * -csv 参数确定是否要生成 csv 格式统计文件，`y` 或 `n`，缺省为 `y`
+* -csvextf 参数确定是否要在导出的 csv 格式统计文件里附加字段，例如 "projectid,svnurlid"，需要 -csv=y，为空值即不添加
+* -csvextv 参数为要在导出的 csv 格式统计文件里附加字段的值，例如 "21,3"，需要 -csv=y，若 -csvextf 为空值此参数无效果
 * -json 参数确定是否要生成 json 格式统计文件，`y` 或 `n`，缺省为 `n`
 ```
-Usage: GoSvnStat [-htyqmwsedn] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-extf=projectid] [-extv=1] [-json=y] [-csv=y]
+Usage: GoSvnStat [-htyqmwsedn] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-logextf=projectid] [-logextv=1] [-json=y] [-csv=y] [-csvextf=projectid] [-csvextv=1] 
 
 Options:
   -all string
         svn log for all; priority 6 (default "n")
   -csv string
         generate csv stats files, y or n (default "y")
+  -csvextf string
+        append extra field to csv stat files, need -csv=y
+  -csvextv string
+        append extra field value to csv stat files, need -csv=y
   -csvlog string
         generate csv log files, y or n (default "n")
   -d string
         code working directory
   -e string
         svn log end date, like 2006-01-03, or reversion number, or HEAD; priority 1
-  -extf string
-        append extra field to csv log files, need -csvlog=y
-  -extv string
-        append extra field value to csv log files, need -csvlog=y
   -h    print help information
   -json string
         generate json stats files, y or n (default "n")
+  -logextf string
+        append extra field to csv log files, need -csvlog=y
+  -logextv string
+        append extra field value to csv log files, need -csvlog=y
   -m string
         svn log for a month, like 2006-01; priority 3
   -n string

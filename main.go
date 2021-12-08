@@ -37,8 +37,10 @@ var exportCsvLog *string = flag.String("csvlog", "n", "generate csv log files, y
 var exportJsonStats *string = flag.String("json", "n", "generate json stats files, y or n")
 var exportCsvStats *string = flag.String("csv", "y", "generate csv stats files, y or n")
 
-var extraField *string = flag.String("extf", "", "append extra field to csv log files, need -csvlog=y")
-var extraValue *string = flag.String("extv", "", "append extra field value to csv log files, need -csvlog=y")
+var csvLogExtraField *string = flag.String("logextf", "", "append extra field to csv log files, need -csvlog=y")
+var csvLogExtraValue *string = flag.String("logextv", "", "append extra field value to csv log files, need -csvlog=y")
+var csvStatsExtraField *string = flag.String("csvextf", "", "append extra field to csv stat files, need -csv=y")
+var csvStatsExtraValue *string = flag.String("csvextv", "", "append extra field value to csv stat files, need -csv=y")
 
 var help *bool = flag.Bool("h", false, "print help information")
 var chartTemplate *string = flag.String("t", "", "hightcharts Template file")
@@ -51,7 +53,7 @@ func main() {
 	if len(os.Args) == 1 || *help {
 		fmt.Fprintf(os.Stderr, `
 GoSvnStat version: GoSvnStat/1.0.0
-Usage: GoSvnStat [-htyqmwsedn] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-extf=projectid] [-extv=1] [-json=y] [-csv=y]
+Usage: GoSvnStat [-htyqmwsedn] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-logextf=projectid] [-logextv=1] [-json=y] [-csv=y] [-csvextf=projectid] [-csvextv=1] 
 
 Options:
 `)
@@ -98,12 +100,12 @@ Options:
 		csvlog = true
 	}
 
-	extf := ""
-	extv := ""
-	if *extraField != "" && csvlog {
-		log.Println("-extf is set, will append extra field " + extf + " to the csv stat files")
-		extf = *extraField
-		extv = *extraValue
+	logextf := ""
+	logextv := ""
+	if *csvLogExtraField != "" && csvlog {
+		log.Println("-logextf is set, will append extra field " + logextf + " to the csv log files")
+		logextf = *csvLogExtraField
+		logextv = *csvLogExtraValue
 	}
 
 	//是否生成 json 格式的统计结果文件
@@ -118,6 +120,14 @@ Options:
 	if *exportCsvStats == "y" {
 		log.Println("-csv is y, will export the stat results to csv files")
 		csv = true
+	}
+
+	csvextf := ""
+	csvextv := ""
+	if *csvStatsExtraField != "" && csv {
+		log.Println("-csvextf is set, will append extra field " + csvextf + " to the csv stat files")
+		csvextf = *csvStatsExtraField
+		csvextv = *csvStatsExtraValue
 	}
 
 	var dontignore = true //按优先级忽略
@@ -142,12 +152,12 @@ Options:
 		if err_w == nil && err_y == nil {
 			s, e, err := util.GetWeekStartEnd(y, w)
 			if err == nil {
-				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, extf, extv)
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
 				if json {
 					util.SaveStatsToJson(*logNamePrefix, yw[0], s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 				}
 				if csv {
-					util.SaveStatsToCSV(*logNamePrefix, yw[0], s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
+					util.SaveStatsToCSV(*logNamePrefix, yw[0], s, e, y, util.WEEK_STATS, w, reg, AuthorStats, csvextf, csvextv)
 				}
 				return
 			}
@@ -168,12 +178,12 @@ Options:
 		if err_m == nil && err_y == nil {
 			s, e, err := util.GetMonthStartEnd(y, m)
 			if err == nil {
-				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, extf, extv)
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
 				if json {
 					util.SaveStatsToJson(*logNamePrefix, ym[0], s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
 				}
 				if csv {
-					util.SaveStatsToCSV(*logNamePrefix, ym[0], s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
+					util.SaveStatsToCSV(*logNamePrefix, ym[0], s, e, y, util.MONTH_STATS, m, reg, AuthorStats, csvextf, csvextv)
 				}
 				return
 			}
@@ -195,12 +205,12 @@ Options:
 		if err_q == nil && err_y == nil {
 			s, e, err := util.GetQuarterStartEnd(y, q)
 			if err == nil {
-				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, extf, extv)
+				_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
 				if json {
 					util.SaveStatsToJson(*logNamePrefix, yq[0], s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
 				}
 				if csv {
-					util.SaveStatsToCSV(*logNamePrefix, yq[0], s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
+					util.SaveStatsToCSV(*logNamePrefix, yq[0], s, e, y, util.QUARTER_STATS, q, reg, AuthorStats, csvextf, csvextv)
 				}
 				return
 			}
@@ -218,12 +228,12 @@ Options:
 		for q := 1; q < 5; q++ {
 			s, e, _ := util.GetQuarterStartEnd(y, q)
 			log.Printf("Start to generate %d Q%d svn stats, From %s to %s", y, q, s, e)
-			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, extf, extv)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv)
 			if json {
 				util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
 			}
 			if csv {
-				util.SaveStatsToCSV(*logNamePrefix, *year, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats)
+				util.SaveStatsToCSV(*logNamePrefix, *year, s, e, y, util.QUARTER_STATS, q, reg, AuthorStats, csvextf, csvextv)
 			}
 		}
 
@@ -231,12 +241,12 @@ Options:
 		for m := 1; m < 13; m++ {
 			s, e, _ := util.GetMonthStartEnd(y, m)
 			log.Printf("Start to generate %d-%d svn stats, From %s to %s", y, m, s, e)
-			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, extf, extv)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv)
 			if json {
 				util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
 			}
 			if csv {
-				util.SaveStatsToCSV(*logNamePrefix, *year, s, e, y, util.MONTH_STATS, m, reg, AuthorStats)
+				util.SaveStatsToCSV(*logNamePrefix, *year, s, e, y, util.MONTH_STATS, m, reg, AuthorStats, csvextf, csvextv)
 			}
 		}
 
@@ -244,12 +254,12 @@ Options:
 		for w := 1; w < 53; w++ {
 			s, e, _ := util.GetWeekStartEnd(y, w)
 			log.Printf("Start to generate %d week %d svn stats, From %s to %s", y, w, s, e)
-			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, extf, extv)
+			_, AuthorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv)
 			if json {
 				util.SaveStatsToJson(*logNamePrefix, *year, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
 			}
 			if csv {
-				util.SaveStatsToCSV(*logNamePrefix, *year, s, e, y, util.WEEK_STATS, w, reg, AuthorStats)
+				util.SaveStatsToCSV(*logNamePrefix, *year, s, e, y, util.WEEK_STATS, w, reg, AuthorStats, csvextf, csvextv)
 			}
 		}
 
@@ -258,12 +268,12 @@ Options:
 
 		//年度统计
 		log.Printf("Start to generate year %d svn stats, From %s to %s", y, *startDate, *endDate)
-		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true, extf, extv)
+		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true, logextf, logextv)
 		if json {
 			util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
 		}
 		if csv {
-			util.SaveStatsToCSV(*logNamePrefix, *year, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats)
+			util.SaveStatsToCSV(*logNamePrefix, *year, *startDate, *endDate, y, util.YEAR_STATS, 0, reg, AuthorStats, csvextf, csvextv)
 		}
 		return
 	}
@@ -276,22 +286,22 @@ Options:
 		*endDate = now.Format(DATE_DAY)
 
 		log.Printf("Start to generate all svn stats, From revision %s to %s", *startDate, *endDate)
-		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, extf, extv)
+		_, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
 		if json {
 			util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats)
 		}
 		if csv {
-			util.SaveStatsToCSV(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats)
+			util.SaveStatsToCSV(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats, csvextf, csvextv)
 		}
 		return
 	}
 
-	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, extf, extv)
+	authorTimeStats, AuthorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
 	if json {
 		util.SaveStatsToJson(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats) //Custome
 	}
 	if csv {
-		util.SaveStatsToCSV(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats) //Custome
+		util.SaveStatsToCSV(*logNamePrefix, *year, *startDate, *endDate, 0, "", 0, reg, AuthorStats, csvextf, csvextv) //Custome
 	}
 	//输出结果
 	ConsoleOutPutTable(AuthorStats)

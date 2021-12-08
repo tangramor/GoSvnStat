@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math"
 	"os"
 	"os/exec"
 	"regexp"
@@ -311,9 +310,10 @@ func GetQuarterStartEnd(year int, quarter int) (startDate string, endDate string
 }
 
 //获取起始日期和结束日期之间的天数，包括结束日期当天
-func GetDurationDays(startDate string, endDate string) (days int) {
-	s, _ := time.Parse(DATE_DAY, startDate)
-	e, _ := time.Parse(DATE_DAY, endDate)
+// func GetDurationDays(startDate string, endDate string) (days int) {
+func GetDurationDays(s time.Time, e time.Time) (days int) {
+	// s, _ := time.Parse(DATE_DAY, startDate)
+	// e, _ := time.Parse(DATE_DAY, endDate)
 
 	return int(e.Sub(s).Hours()/24) + 1
 }
@@ -321,6 +321,9 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 //根据输入参数生成统计数据
 // extraField / extraValue 用于给 csv 日志添加额外的字段值，比如该项目 id
 func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool, extraField string, extraValue string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+	sd, _ := time.Parse(DATE_DAY, startDate)
+	ed, _ := time.Parse(DATE_DAY, endDate)
+
 	//生成 svn 日志文件
 	svnXmlFile, err := GetSvnLogFile(startDate, endDate, svnUrl, logNamePrefix, reGenerate)
 
@@ -328,7 +331,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	if !strings.Contains(startDate, "-") {
 		startDate, _ = GetSvnDateByRevision(startDate, svnUrl)
 	}
-	days := GetDurationDays(startDate, endDate)
+	days := GetDurationDays(sd, ed)
 	log.Printf("Total %d days during the stats", days)
 
 	if err != nil {
@@ -365,6 +368,9 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 		//综合统计
 		Author, ok_as := AuthorStats[svnXmlLog.Author]
 
+		Author.StartDate = sd.Format(DATE_MYSQL)
+		Author.EndDate = ed.Format(DATE_MYSQL)
+
 		//记录人和日期的详细log，用于细分统计
 		authorTimeStat, ok_tss := authorTimeStats[svnXmlLog.Author]
 		saveTime, err := time.Parse(DATE_SECOND, svnXmlLog.Date)
@@ -377,6 +383,9 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 
 		//取基于时间的用户操作信息
 		AuthorTS, ok_ts := authorTimeStat[saveTimeStr]
+
+		AuthorTS.StartDate = sd.Format(DATE_MYSQL)
+		AuthorTS.EndDate = ed.Format(DATE_MYSQL)
 
 		Author.CommitCount += 1
 		AuthorTS.CommitCount += 1
@@ -444,7 +453,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	}
 
 	for name, author := range AuthorStats {
-		author.AverageCommitsPerDay = int(math.Round(float64(author.CommitCount) / float64(days)))
+		author.AverageCommitsPerDay = float64(author.CommitCount) / float64(days)
 		AuthorStats[name] = author
 	}
 
@@ -483,8 +492,14 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 	var headerCommit = []string{"revision", "author", "date", "msg", "url"}
 	var headerPaths = []string{"revision", "path", "action", "kind", "prop-mods", "text-mods"}
 	if extraField != "" {
-		headerCommit = append(headerCommit, extraField)
-		headerPaths = append(headerPaths, extraField)
+		if strings.Contains(extraField, ",") {
+			fields := strings.Split(extraField, ",")
+			headerCommit = append(headerCommit, fields...)
+			headerPaths = append(headerPaths, fields...)
+		} else {
+			headerCommit = append(headerCommit, extraField)
+			headerPaths = append(headerPaths, extraField)
+		}
 	}
 
 	writer_c.Write(headerCommit)
@@ -500,7 +515,12 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 			svnUrl,
 		}
 		if extraField != "" {
-			data_c = append(data_c, extraValue)
+			if strings.Contains(extraValue, ",") {
+				values := strings.Split(extraValue, ",")
+				data_c = append(data_c, values...)
+			} else {
+				data_c = append(data_c, extraValue)
+			}
 		}
 
 		writer_c.Write(data_c)
@@ -514,7 +534,12 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 				path.TextMods,
 			}
 			if extraField != "" {
-				data_p = append(data_p, extraValue)
+				if strings.Contains(extraValue, ",") {
+					values := strings.Split(extraValue, ",")
+					data_p = append(data_p, values...)
+				} else {
+					data_p = append(data_p, extraValue)
+				}
 			}
 
 			writer_p.Write(data_p)
@@ -534,7 +559,7 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 	}
 }
 
-//将数据保存到 JSON 文件
+//将统计结果数据保存到 JSON 文件
 func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
 	pwd, _ := os.Getwd()
 
@@ -578,8 +603,10 @@ func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endD
 
 }
 
-//将数据保存到 CSV 文件
-func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
+//将统计结果数据保存到 CSV 文件
+func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDate string, year int,
+	typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat,
+	extraField string, extraValue string) {
 	pwd, _ := os.Getwd()
 
 	if subFolder != "" {
@@ -616,7 +643,7 @@ func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDa
 
 	}
 
-	SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate)
+	SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate, extraField, extraValue)
 
 }
 
@@ -722,7 +749,7 @@ func SaveCustomStatsToJsonFile(startDate string, endDate string, authorStats []s
 	_ = ioutil.WriteFile(filepath, file, 0644)
 }
 
-func SaveStatsToCsvFile(authorStats []statStruct.AuthorNameStat, filepath string, reGenerate bool) {
+func SaveStatsToCsvFile(authorStats []statStruct.AuthorNameStat, filepath string, reGenerate bool, extraField string, extraValue string) {
 	//文件已存在且未要求重新生成
 	if !reGenerate && fileExists(filepath) {
 		log.Printf("Stats CSV file %s already exists", filepath)
@@ -738,17 +765,35 @@ func SaveStatsToCsvFile(authorStats []statStruct.AuthorNameStat, filepath string
 	}
 
 	writer := csv.NewWriter(f)
-	var header = []string{"Author", "Commits", "AverageCommitsPerDay", "Lines", "FilesAdded", "FilesModified", "FilesDeleted"}
+	var header = []string{"Author", "Commits", "AverageCommitsPerDay", "Lines", "FilesAdded", "FilesModified", "FilesDeleted", "StartDate", "EndDate"}
+	if extraField != "" {
+		if strings.Contains(extraField, ",") {
+			fields := strings.Split(extraField, ",")
+			header = append(header, fields...)
+		} else {
+			header = append(header, extraField)
+		}
+	}
 	writer.Write(header)
 
 	for _, authorStat := range authorStats {
 		var data = []string{authorStat.Author,
 			strconv.Itoa(authorStat.Stat.CommitCount),
-			strconv.Itoa(authorStat.Stat.AverageCommitsPerDay),
+			strconv.FormatFloat(authorStat.Stat.AverageCommitsPerDay, 'f', 4, 64),
 			strconv.Itoa(authorStat.Stat.AppendLines + authorStat.Stat.RemoveLines),
 			strconv.Itoa(authorStat.Stat.AddedFiles),
 			strconv.Itoa(authorStat.Stat.ModifiedFiles),
 			strconv.Itoa(authorStat.Stat.DeletedFiles),
+			authorStat.Stat.StartDate,
+			authorStat.Stat.EndDate,
+		}
+		if extraField != "" {
+			if strings.Contains(extraValue, ",") {
+				values := strings.Split(extraValue, ",")
+				data = append(data, values...)
+			} else {
+				data = append(data, extraValue)
+			}
 		}
 		writer.Write(data)
 	}
