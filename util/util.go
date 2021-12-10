@@ -162,6 +162,44 @@ func fileExists(path string) bool {
 	return !errors.Is(err, os.ErrNotExist)
 }
 
+func createScriptFile(path string) {
+	var f, err = os.Create(path)
+	if err != nil {
+		return
+	}
+
+	fmt.Fprintln(f, "#!/bin/bash")
+	fmt.Fprintln(f, "startDate=$1")
+	fmt.Fprintln(f, "endDate=$2")
+	fmt.Fprintln(f, "svnUrl=$3")
+	fmt.Fprintln(f, "logName=$4")
+	fmt.Fprintln(f, "if [[ \"$startDate\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then")
+	fmt.Fprintln(f, "    startDate=\"{\"$startDate\"}\"")
+	fmt.Fprintln(f, "fi")
+	fmt.Fprintln(f, "if [[ \"$endDate\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then")
+	fmt.Fprintln(f, "    endDate=\"{\"$endDate\"}\"")
+	fmt.Fprintln(f, "fi")
+	fmt.Fprintln(f, "svn log -r $startDate\":\"$endDate --xml -v $svnUrl > $logName")
+
+	if err != nil {
+		fmt.Println(err)
+		f.Close()
+		return
+	}
+
+	err = f.Chmod(0755)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = f.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
+
 //获取svn日志
 func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix string, reGenerate bool) (svnLogFile string, err error) { /*{{{*/
 	pwd, _ := os.Getwd()
@@ -208,6 +246,12 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	param3 := svnUrl
 	param4 := log_fullpath
 
+	//判断脚本文件是否存在
+	if !fileExists(app) {
+		log.Fatalf("script file '%s' not exists.", app)
+		createScriptFile(app)
+	}
+
 	cmd := exec.Command(app, param1, param2, param3, param4)
 	fmt.Printf("%v\n", cmd.Args)
 	var out bytes.Buffer
@@ -217,8 +261,10 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	err = cmd.Run()
 	if err != nil {
 		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
+		os.Remove(app)
 		return "", err
 	} else {
+		os.Remove(app)
 		return param4, nil
 	}
 } /*}}}*/

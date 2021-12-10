@@ -1,8 +1,16 @@
 # GoSvnStat
 
-A svn stat tool written by Go. Based on https://github.com/DigDeeply/GoStatsvn
+A svn stat tool written by Go. Based on https://github.com/DigDeeply/GoStatsvn and added more features.
 
 用GO写的用来统计每个人的代码提交数的工具。基于 https://github.com/DigDeeply/GoStatsvn 修改实现。
+
+
+
+## What it can do 这个工具能做什么
+
+
+
+
 
 
 ## Build 编译
@@ -28,6 +36,7 @@ go: to add module requirements and sums:
 
 ➜  GoSvnStat git:(master) ✗ go build
 ```
+
 
 
 ## Usage 用法：
