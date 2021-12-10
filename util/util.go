@@ -248,7 +248,7 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 
 	//判断脚本文件是否存在
 	if !fileExists(app) {
-		log.Fatalf("script file '%s' not exists.", app)
+		log.Printf("script file '%s' not exists, will create it.", app)
 		createScriptFile(app)
 	}
 
@@ -261,10 +261,8 @@ func GetSvnLogFile(startDate string, endDate string, svnUrl string, namePrefix s
 	err = cmd.Run()
 	if err != nil {
 		fmt.Println(fmt.Sprint(err) + ": " + stderr.String())
-		os.Remove(app)
 		return "", err
 	} else {
-		os.Remove(app)
 		return param4, nil
 	}
 } /*}}}*/
