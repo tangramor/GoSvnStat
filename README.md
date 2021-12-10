@@ -1,7 +1,7 @@
 # GoSvnStat
 
-A svn stat tool written by Go.  
-用GO写的用来统计每个人的代码提交数的工具。
+A svn stat tool written by Go. Based on https://github.com/DigDeeply/GoStatsvn
+用GO写的用来统计每个人的代码提交数的工具。基于 https://github.com/DigDeeply/GoStatsvn 修改实现。
 
 
 ## Build 编译
@@ -120,6 +120,10 @@ Options:
 # svn 命令行日志生成方法： svn log -r {2021-11-01T00:00:00Z}:{2021-11-16T23:59:59Z} -v --xml https://svnserver.com/icesvn/ice_server > ice_server_svnlog_202111.xml
 
 ./GoSvnStat -y 2017 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csvextf="projectid,svnurlid" -csvextv="1,1" -url https://svnserver.com/icesvn/ice_server
+
+./GoSvnStat -url https://svnserver.com/icesvn/ice_server -y 2017 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csv=n -json=y
+
+./GoSvnStat -url https://svnserver.com/icesvn/ice_server -m 2017-12 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csv=n -json=y
 
 ./GoSvnStat -all y -csvlog y -n ice_server -url https://svnserver.com/icesvn/ice_server
 
