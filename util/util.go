@@ -452,7 +452,9 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	}
 
 	for name, author := range AuthorStats {
-		author.AverageCommitsPerDay = float64(author.CommitCount) / float64(days)
+		//保留4位小数
+		author.AverageCommitsPerDay, _ = strconv.ParseFloat(fmt.Sprintf("%.4f", float64(author.CommitCount)/float64(days)), 64)
+
 		AuthorStats[name] = author
 	}
 
@@ -559,7 +561,7 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 }
 
 //将统计结果数据保存到 JSON 文件
-func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat) {
+func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endDate string, year int, typeName string, typeValue int, reGenerate bool, authorStatsArr [](map[string]statStruct.AuthorStat)) {
 	pwd, _ := os.Getwd()
 
 	if subFolder != "" {
@@ -574,12 +576,14 @@ func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endD
 	log_fullpath := log_folder + namePrefix + "_svnstats_"
 
 	authorNameStats := []statStruct.AuthorNameStat{}
-	for author, authorstat := range authorStats {
-		authorNameStat := statStruct.AuthorNameStat{
-			Author: author,
-			Stat:   authorstat,
+	for _, authorStats := range authorStatsArr {
+		for author, authorstat := range authorStats {
+			authorNameStat := statStruct.AuthorNameStat{
+				Author: author,
+				Stat:   authorstat,
+			}
+			authorNameStats = append(authorNameStats, authorNameStat)
 		}
-		authorNameStats = append(authorNameStats, authorNameStat)
 	}
 
 	switch typeName {
@@ -603,9 +607,7 @@ func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endD
 }
 
 //将统计结果数据保存到 CSV 文件
-func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDate string, year int,
-	typeName string, typeValue int, reGenerate bool, authorStats map[string]statStruct.AuthorStat,
-	extraField string, extraValue string) {
+func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDate string, reGenerate bool, authorStatsArr [](map[string]statStruct.AuthorStat), extraField string, extraValue string) {
 	pwd, _ := os.Getwd()
 
 	if subFolder != "" {
@@ -620,27 +622,17 @@ func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDa
 	log_fullpath := log_folder + namePrefix + "_svnstats_"
 
 	authorNameStats := []statStruct.AuthorNameStat{}
-	for author, authorstat := range authorStats {
-		authorNameStat := statStruct.AuthorNameStat{
-			Author: author,
-			Stat:   authorstat,
+	for _, authorStats := range authorStatsArr {
+		for author, authorstat := range authorStats {
+			authorNameStat := statStruct.AuthorNameStat{
+				Author: author,
+				Stat:   authorstat,
+			}
+			authorNameStats = append(authorNameStats, authorNameStat)
 		}
-		authorNameStats = append(authorNameStats, authorNameStat)
 	}
 
 	filename := log_fullpath + startDate + "_" + endDate
-	switch typeName {
-	case YEAR_STATS:
-		filename = log_fullpath + "year_" + strconv.Itoa(year)
-	case QUARTER_STATS:
-		filename = log_fullpath + "quarter_" + strconv.Itoa(year) + "Q" + strconv.Itoa(typeValue)
-	case MONTH_STATS:
-		filename = log_fullpath + "month_" + strconv.Itoa(year) + "M" + strconv.Itoa(typeValue)
-	case WEEK_STATS:
-		filename = log_fullpath + "week_" + strconv.Itoa(year) + "W" + strconv.Itoa(typeValue)
-	default:
-
-	}
 
 	SaveStatsToCsvFile(authorNameStats, filename+".csv", reGenerate, extraField, extraValue)
 
