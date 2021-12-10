@@ -1,6 +1,7 @@
 # GoSvnStat
 
 A svn stat tool written by Go. Based on https://github.com/DigDeeply/GoStatsvn
+
 用GO写的用来统计每个人的代码提交数的工具。基于 https://github.com/DigDeeply/GoStatsvn 修改实现。
 
 
