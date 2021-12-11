@@ -163,23 +163,24 @@ func fileExists(path string) bool {
 }
 
 func createScriptFile(path string) {
-	var f, err = os.Create(path)
+	f, err := os.Create(path)
 	if err != nil {
 		return
 	}
 
-	fmt.Fprintln(f, "#!/bin/bash")
-	fmt.Fprintln(f, "startDate=$1")
-	fmt.Fprintln(f, "endDate=$2")
-	fmt.Fprintln(f, "svnUrl=$3")
-	fmt.Fprintln(f, "logName=$4")
-	fmt.Fprintln(f, "if [[ \"$startDate\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then")
-	fmt.Fprintln(f, "    startDate=\"{\"$startDate\"}\"")
-	fmt.Fprintln(f, "fi")
-	fmt.Fprintln(f, "if [[ \"$endDate\" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then")
-	fmt.Fprintln(f, "    endDate=\"{\"$endDate\"}\"")
-	fmt.Fprintln(f, "fi")
-	fmt.Fprintln(f, "svn log -r $startDate\":\"$endDate --xml -v $svnUrl > $logName")
+	_, err = fmt.Fprintf(f, `#!/bin/bash
+startDate=$1
+endDate=$2
+svnUrl=$3
+logName=$4
+if [[ "$startDate" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+    startDate="{"$startDate"}"
+fi
+if [[ "$endDate" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]; then
+    endDate="{"$endDate"}"
+fi
+svn log -r $startDate":"$endDate --xml -v $svnUrl > $logName
+`)
 
 	if err != nil {
 		fmt.Println(err)
@@ -190,6 +191,7 @@ func createScriptFile(path string) {
 	err = f.Chmod(0755)
 	if err != nil {
 		fmt.Println(err)
+		f.Close()
 		return
 	}
 
