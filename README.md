@@ -8,12 +8,34 @@ A svn stat tool written by Go. Based on https://github.com/DigDeeply/GoStatsvn a
 
 ## What it can do 这个工具能做什么
 
+This tool can generate svn stats based on svn logs, calculate how many commits were made by a developer and average commit times per day, and how many files were added/modified/deleted during a period. If the tool was executed in the source code folder, it can also count the lines made by the developer.
 
+此工具可以基于 svn log，来统计一段时间内开发人员进行的提交次数、平均每日提交次数、提交的文件增/删/改数量。如果是在开发源码目录下执行此工具，还可以统计开发者的提交行数。
+
+Stats Example output / 统计结果输出样例 （CSV）
+
+```csv
+Author,Commits,AverageCommitsPerDay,Lines,FilesAdded,FilesModified,FilesDeleted,StartDate,EndDate,ProjectId,SvnUrlId
+developer1,1,0.0110,0,339,0,0,2017-04-01 00:00:00,2017-06-30 23:59:59,3,6
+developer1,51,0.5543,0,3212,444,27,2017-07-01 00:00:00,2017-09-30 23:59:59,3,6
+developer23,46,0.5000,0,56315,223,28,2017-07-01 00:00:00,2017-09-30 23:59:59,3,6
+developer34,1,0.0109,0,1,1,0,2017-10-01 00:00:00,2017-12-31 23:59:59,3,6
+```
+
+The above example was generated with `-csvextf="ProjectId,SvnUrlId" -csvextv="3,6"` options, because it will be imported into database with association of `Project` and `SvnUrl` tables.
+
+上面的例子是此工具在执行时添加了 `-csvextf="ProjectId,SvnUrlId" -csvextv="3,6"` 参数生成的，目的是为了方便导入数据库时，这两个参数用于和 `Project` 、 `SvnUrl` 两个表通过 ID 做关联。
+
+It can also generate JSON formate stats, which can be used for web frontend chart.
+
+此工具也可以生成 JSON 格式的统计结果，可以直接用作 Web 图表展示的数据源。
 
 
 
 
 ## Build 编译
+
+Configure golang develop environment and execute `go build`.
 
 配置好 golang 开发环境，执行 `go build`。下面是在 MacOS 上的 oh-my-zsh 下的操作过程。
 
@@ -41,7 +63,9 @@ go: to add module requirements and sums:
 
 ## Usage 用法：
 
-配置运行环境，把客户端证书放到合适的目录，然后修改 `~/.subversion/servers`
+Configure execution evironment, setup svn client tool and config svn server/user. For example, if the svn server needs cert file, you need put the file to a path and config  `~/.subversion/servers` file with corresponding path.
+
+配置运行环境，如果 svn 服务器是使用证书登录的，把客户端证书放到合适的目录，然后修改 `~/.subversion/servers`
 
 ```
 [groups]
@@ -120,16 +144,24 @@ Options:
         svn log for a year, like 2006; priority 5
 ```
 
+The generated svn log files will be in `svn_logs` folder.
+
 生成的 svn 日志会放置在当前目录下的 `svn_logs` 子目录；
+
+If you choose to generate cdv format logs, they will be put under `svn_csv_logs` folder. There will be `_commits.csv` and `_paths.csv` 2 files associated by revision.
 
 如果有 csv 导出，则会放置到当前目录下的 `svn_csv_logs` 子目录，包含 `_commits.csv` 和 `_paths.csv` 两个文件，以 `revision` 关联；
 
+Stat output files will be put in `svn_stats`.
+
 统计数据会放置在当前目录下的 `svn_stats` 子目录。
+
+Some Usage Examples / 几个使用实例：
 
 ```
 # svn 命令行日志生成方法： svn log -r {2021-11-01T00:00:00Z}:{2021-11-16T23:59:59Z} -v --xml https://svnserver.com/icesvn/ice_server > ice_server_svnlog_202111.xml
 
-./GoSvnStat -y 2017 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csvextf="projectid,svnurlid" -csvextv="1,1" -url https://svnserver.com/icesvn/ice_server
+./GoSvnStat -y 2017 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csvextf="ProjectId,SvnUrlId" -csvextv="1,1" -url https://svnserver.com/icesvn/ice_server
 
 ./GoSvnStat -url https://svnserver.com/icesvn/ice_server -y 2017 -n ice_server -csvlog=y -logextf=projectid -logextv=1 -csv=n -json=y
 
