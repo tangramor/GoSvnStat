@@ -510,7 +510,7 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svnUrl string, fileNamePrefix string, reGenerate bool, extraField string, extraValue string) {
 	pwd, _ := os.Getwd()
 
-	log_folder := pwd + "/svn_csv_logs/"
+	log_folder := pwd + "/svn_csv_logs/" + fileNamePrefix + "/"
 	if !fileExists(log_folder) {
 		os.MkdirAll(log_folder, os.FileMode(0755))
 	}
@@ -614,7 +614,7 @@ func SaveStatsToJson(namePrefix string, subFolder string, startDate string, endD
 		subFolder += "/"
 	}
 
-	log_folder := pwd + "/svn_stats/" + subFolder
+	log_folder := pwd + "/svn_stats/" + namePrefix + "/" + subFolder
 	if !fileExists(log_folder) {
 		os.MkdirAll(log_folder, os.FileMode(0755))
 	}
@@ -660,7 +660,7 @@ func SaveStatsToCSV(namePrefix string, subFolder string, startDate string, endDa
 		subFolder += "/"
 	}
 
-	log_folder := pwd + "/svn_stats/" + subFolder
+	log_folder := pwd + "/svn_stats/" + namePrefix + "/" + subFolder
 	if !fileExists(log_folder) {
 		os.MkdirAll(log_folder, os.FileMode(0755))
 	}
