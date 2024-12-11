@@ -28,6 +28,7 @@ var month *string = flag.String("m", "", "svn log for a month, like 2006-01; pri
 var week *string = flag.String("w", "", "svn log for a week like 2006W20; priority 2")
 var startDate *string = flag.String("s", "", "svn log start date, like 2006-01-02, or reversion number; priority 1")
 var endDate *string = flag.String("e", "", "svn log end date, like 2006-01-03, or reversion number, or HEAD; priority 1")
+var author *string = flag.String("u", "", "author name, svn logs/stats for this only author")
 
 var svnDir *string = flag.String("d", "", "code working directory")
 var svnUrl *string = flag.String("url", "", "svn repository URL")
@@ -53,7 +54,7 @@ func main() {
 	if len(os.Args) == 1 || *help {
 		fmt.Fprintf(os.Stderr, `
 GoSvnStat version: GoSvnStat/1.0.0
-Usage: GoSvnStat [-htyqmwsedn] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-logextf=projectid] [-logextv=1] [-json=y] [-csv=y] [-csvextf=projectid] [-csvextv=1] 
+Usage: GoSvnStat [-htyqmwsednu] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-logextf=projectid] [-logextv=1] [-json=y] [-csv=y] [-csvextf=projectid] [-csvextv=1] 
 
 Options:
 `)
@@ -130,6 +131,10 @@ Options:
 		csvextv = *csvStatsExtraValue
 	}
 
+	if *author != "" {
+		log.Println("-u is set, will export the log and stats file for author " + *author)
+	}
+
 	var dontignore = true //按优先级忽略
 
 	//按开始、结束日期统计，第一优先，即有这个参数就忽略其它时间参数
@@ -154,7 +159,7 @@ Options:
 		if err_w == nil && err_y == nil {
 			s, e, err := util.GetWeekStartEnd(y, w)
 			if err == nil {
-				_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
+				_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv, *author)
 
 				authorStatsArr = append(authorStatsArr, authorStats)
 
@@ -183,7 +188,7 @@ Options:
 		if err_m == nil && err_y == nil {
 			s, e, err := util.GetMonthStartEnd(y, m)
 			if err == nil {
-				_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
+				_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv, *author)
 
 				authorStatsArr = append(authorStatsArr, authorStats)
 
@@ -213,7 +218,7 @@ Options:
 		if err_q == nil && err_y == nil {
 			s, e, err := util.GetQuarterStartEnd(y, q)
 			if err == nil {
-				_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
+				_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv, *author)
 
 				authorStatsArr = append(authorStatsArr, authorStats)
 
@@ -239,7 +244,7 @@ Options:
 		for q := 1; q < 5; q++ {
 			s, e, _ := util.GetQuarterStartEnd(y, q)
 			log.Printf("Start to generate %d Q%d svn stats, From %s to %s", y, q, s, e)
-			_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv)
+			_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv, *author)
 
 			authorStatsArr = append(authorStatsArr, authorStats)
 		}
@@ -248,7 +253,7 @@ Options:
 		for m := 1; m < 13; m++ {
 			s, e, _ := util.GetMonthStartEnd(y, m)
 			log.Printf("Start to generate %d-%d svn stats, From %s to %s", y, m, s, e)
-			_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv)
+			_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv, *author)
 
 			authorStatsArr = append(authorStatsArr, authorStats)
 		}
@@ -257,7 +262,7 @@ Options:
 		for w := 1; w < 53; w++ {
 			s, e, _ := util.GetWeekStartEnd(y, w)
 			log.Printf("Start to generate %d week %d svn stats, From %s to %s", y, w, s, e)
-			_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv)
+			_, authorStats := util.GenerateStat(s, e, *svnUrl, *svnDir, *logNamePrefix, reg, false, logextf, logextv, *author)
 
 			authorStatsArr = append(authorStatsArr, authorStats)
 		}
@@ -267,7 +272,7 @@ Options:
 
 		//年度统计
 		log.Printf("Start to generate year %d svn stats, From %s to %s", y, *startDate, *endDate)
-		_, authorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true, logextf, logextv)
+		_, authorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, true, logextf, logextv, *author)
 
 		authorStatsArr = append(authorStatsArr, authorStats)
 
@@ -289,7 +294,7 @@ Options:
 
 		log.Printf("Start to generate all svn stats, From revision %s to %s", *startDate, *endDate)
 
-		_, authorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
+		_, authorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv, *author)
 
 		authorStatsArr = append(authorStatsArr, authorStats)
 
@@ -302,7 +307,7 @@ Options:
 		return
 	}
 
-	authorTimeStats, authorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv)
+	authorTimeStats, authorStats := util.GenerateStat(*startDate, *endDate, *svnUrl, *svnDir, *logNamePrefix, reg, csvlog, logextf, logextv, *author)
 	authorStatsArr = append(authorStatsArr, authorStats)
 
 	if json {

@@ -56,7 +56,7 @@ go: to add module requirements and sums:
 
 ➜  GoSvnStat git:(master) ✗ go mod tidy
 
-➜  GoSvnStat git:(master) ✗ go build
+➜  GoSvnStat git:(master) ✗ CGO_ENABLED=0 go build -a -ldflags '-extldflags "-static"' .
 ```
 
 
@@ -81,6 +81,7 @@ store-plaintext-passwords = no
 
 * -h 参数打印帮助信息
 * -url 参数指定 svn 仓库 URL，**必需参数**
+* -u 参数指定 svn 用户名，只输出此用户的日志和统计信息
 * -d 参数指定 svn 的开发路径
 * -t 参数指定画图的模版文件路径，模版文件是项目根目录下的 gostatsvn.html 文件
 * -all 参数统计到当前的全部日志信息，，该参数与其它时间、版本参数互斥。
@@ -99,6 +100,7 @@ store-plaintext-passwords = no
 * -csvextf 参数确定是否要在导出的 csv 格式统计文件里附加字段，例如 "projectid,svnurlid"，需要 -csv=y，为空值即不添加
 * -csvextv 参数为要在导出的 csv 格式统计文件里附加字段的值，例如 "21,3"，需要 -csv=y，若 -csvextf 为空值此参数无效果
 * -json 参数确定是否要生成 json 格式统计文件，`y` 或 `n`，缺省为 `n`
+
 ```
 Usage: GoSvnStat [-htyqmwsedn] [-all] [-url=svn_repo_url] [-reg=y] [-csvlog=y] [-logextf=projectid] [-logextv=1] [-json=y] [-csv=y] [-csvextf=projectid] [-csvextv=1] 
 
@@ -136,6 +138,8 @@ Options:
         svn log start date, like 2006-01-02, or reversion number; priority 1
   -t string
         hightcharts Template file
+  -u string
+        author name, svn logs/stats for this only author
   -url string
         svn repository URL
   -w string
@@ -178,5 +182,7 @@ Some Usage Examples / 几个使用实例：
 ./GoSvnStat -m 2018-02 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
 
 ./GoSvnStat -w 2018W11 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
+
+./GoSvnStat -u zhangsan -y 2017 -n ice_server -reg y -d /root/test -t /root/test/gostatsvn.html -url https://svnserver.com/icesvn/ice_server
 ```
 

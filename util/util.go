@@ -365,7 +365,7 @@ func GetDurationDays(startDate string, endDate string) (days int) {
 
 //根据输入参数生成统计数据
 // extraField / extraValue 用于给 csv 日志添加额外的字段值，比如该项目 id
-func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool, extraField string, extraValue string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
+func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string, logNamePrefix string, reGenerate bool, csvExport bool, extraField string, extraValue string, author string) (ats statStruct.AuthorTimeStats, as map[string]statStruct.AuthorStat) {
 	//生成 svn 日志文件
 	svnXmlFile, err := GetSvnLogFile(startDate, endDate, svnUrl, logNamePrefix, reGenerate)
 
@@ -403,13 +403,20 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 
 	//导出 CSV 格式的 log
 	if csvExport {
-		ExportLogToCsv(svnXmlLogs, startDate, endDate, svnUrl, logNamePrefix, reGenerate, extraField, extraValue)
+		ExportLogToCsv(svnXmlLogs, startDate, endDate, svnUrl, logNamePrefix, reGenerate, extraField, extraValue, author)
 	}
 
 	sd, _ := time.Parse(DATE_SECOND, startDate+DAY_START_SECOND)
 	ed, _ := time.Parse(DATE_SECOND, endDate+DAY_END_SECOND)
 
+	filterAuthor := len(author) > 0
+
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
+		
+		if filterAuthor && svnXmlLog.Author != author {
+			continue
+		}
+
 		//综合统计
 		Author, ok_as := AuthorStats[svnXmlLog.Author]
 
@@ -507,8 +514,10 @@ func GenerateStat(startDate string, endDate string, svnUrl string, svnDir string
 	return authorTimeStats, AuthorStats
 }
 
-func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svnUrl string, fileNamePrefix string, reGenerate bool, extraField string, extraValue string) {
+func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svnUrl string, fileNamePrefix string, reGenerate bool, extraField string, extraValue string, author string) {
 	pwd, _ := os.Getwd()
+
+	filterAuthor := len(author) > 0
 
 	log_folder := pwd + "/svn_csv_logs/" + fileNamePrefix + "/"
 	if !fileExists(log_folder) {
@@ -554,6 +563,10 @@ func ExportLogToCsv(svnXmlLogs SvnXmlLogs, startDate string, endDate string, svn
 
 	for _, svnXmlLog := range svnXmlLogs.Logentry {
 		d, _ := time.Parse(DATE_NANOSEC, svnXmlLog.Date)
+
+		if filterAuthor && svnXmlLog.Author != author {
+			continue
+		}
 
 		var data_c = []string{svnXmlLog.Revision,
 			svnXmlLog.Author,
